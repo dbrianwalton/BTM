@@ -13,7 +13,7 @@
 ******************************* */
 
 import { MathObject } from "./expression.js"
-import { exprType, BTM } from "./BTM.js"
+import { exprType, BTM } from "./BTM_root.js"
 import { scalar_expr } from "./scalar_expr";
 
 export class math_set extends MathObject {

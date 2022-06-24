@@ -13,7 +13,7 @@
 * *************************************************** */
 import { expression } from "./expression.js"
 import { scalar_expr } from "./scalar_expr.js"
-import { exprType, exprValue } from "./BTM.js"
+import { exprType, exprValue } from "./BTM_root.js"
 
 export class variable_expr extends expression {
     constructor(btm, name) {

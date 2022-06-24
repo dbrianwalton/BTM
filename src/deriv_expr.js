@@ -14,7 +14,7 @@
 
 import { expression } from "./expression.js"
 import { variable_expr } from "./variable_expr.js"
-import { exprType } from "./BTM.js"
+import { exprType } from "./BTM_root.js"
 
 export class deriv_expr extends expression {
     constructor(btm, formula, variable, atValue) {

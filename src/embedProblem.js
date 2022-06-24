@@ -8,7 +8,7 @@
  * Date: @DATE
  */
 
-import {BTM} from "./BTM.js"
+import {BTM} from "./BTM_root.js"
 
 export class DynamicMathProblem {
   constructor(opts) {

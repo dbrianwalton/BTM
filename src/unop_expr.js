@@ -15,7 +15,7 @@
 import { expression } from "./expression.js"
 import { scalar_expr } from "./scalar_expr.js"
 import { binop_expr } from "./binop_expr.js"
-import { exprType, opPrec } from "./BTM.js"
+import { exprType, opPrec } from "./BTM_root.js"
 
 export class unop_expr extends expression {
     constructor(btm, op, input) {

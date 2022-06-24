@@ -17,7 +17,7 @@ import { scalar_expr } from "./scalar_expr.js"
 import { variable_expr } from "./variable_expr.js"
 import { unop_expr } from "./unop_expr.js"
 import { binop_expr } from "./binop_expr.js"
-import { exprType } from "./BTM.js"
+import { exprType } from "./BTM_root.js"
 
 export class function_expr extends expression {
     constructor(btm, name, inputExpr, restrictDomain) {

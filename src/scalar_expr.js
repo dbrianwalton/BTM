@@ -15,7 +15,7 @@
 import { expression } from "./expression.js"
 import { real_number } from "./real_number.js"
 import { rational_number } from "./rational_number.js"
-import { exprType } from "./BTM.js"
+import { exprType } from "./BTM_root.js"
 
 export class scalar_expr extends expression {
     constructor(btm, number) {

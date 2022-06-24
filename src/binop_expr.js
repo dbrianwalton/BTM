@@ -12,11 +12,10 @@
 * Define the Binary Expression -- defined by an operator and two inputs.
 * *************************************************** */
 
-import { BTM, opPrec } from "./BTM.js"
+import { BTM, opPrec, exprType, exprValue } from "./BTM_root.js"
 import { expression } from "./expression.js"
 import { scalar_expr } from "./scalar_expr.js"
 import { unop_expr } from "./unop_expr.js"
-import { exprType, exprValue } from "./BTM.js"
 
 export class binop_expr extends expression {
     constructor(btm, op, inputA, inputB) {

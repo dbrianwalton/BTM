@@ -12,7 +12,7 @@
 **  Dealing with identities and reductions.
 ********************************************************************************* */
 
-import {BTM, exprType, exprValue } from "./BTM.js";
+import {BTM, exprType, exprValue } from "./BTM_root.js";
 
 class Identity {
     constructor(refExpr, eqExpr, description, isValid, idNum) {

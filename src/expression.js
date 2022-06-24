@@ -8,7 +8,7 @@
  * Date: @DATE
  */
 
-import { BTM, exprValue } from "./BTM.js"
+import { BTM, exprValue } from "./BTM_root.js"
 import { findMatchRules } from "./reductions.js"
 
 export class MathObject {
