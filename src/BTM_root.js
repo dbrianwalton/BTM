@@ -332,8 +332,8 @@ export class BTM {
   parse(formulaStr, context, bindings, options) {
     if (arguments.length < 2) {
         context = "formula";
-      }
-      if (arguments.length < 3) {
+    }
+    if (arguments.length < 3) {
       bindings = {};
     }
     if (arguments.length < 4) {
