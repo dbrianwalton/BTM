@@ -14,7 +14,7 @@
 
 import { expression } from "./expression.js"
 import { scalar_expr } from "./scalar_expr.js"
-import { exprType } from "./BTM_root.js"
+import { exprType, opPrec } from "./BTM_root.js"
 
 export class multiop_expr extends expression {
     constructor(btm, op, inputs) {

@@ -84,12 +84,12 @@ export class function_expr extends expression {
                 if (functionEntry == undefined) {
                     functionEntry = {};
                     functionEntry["input"] = "x";
-                    var formula = new scalar_expr(this.btm, this.rng.randQ([-20,20],[1,15]));
+                    var formula = new scalar_expr(this.btm, this.btm.rng.randRational([-20,20],[1,15]));
                     var newTerm, varTerm;
                     for (var i=1; i<=6; i++) {
                         newTerm = this.btm.parse("sin("+i+"*x)", "formula");
                         newTerm = new binop_expr(this.btm, "*",
-                                        new scalar_expr(this.btm, this.rng.randQ([-20,20],[1,10])),
+                                        new scalar_expr(this.btm, this.btm.rng.randRational([-20,20],[1,10])),
                                         newTerm);
                         formula = new binop_expr(this.btm, "+", formula, newTerm);
                     }
@@ -122,7 +122,7 @@ export class function_expr extends expression {
     }
 
     toString(elementOnly) {
-        var fcnString, argString, retString;
+        var fcnString, retString;
         if (typeof elementOnly == 'undefined') {
             elementOnly = false;
         }
@@ -131,35 +131,35 @@ export class function_expr extends expression {
             retString = fcnString;
         } else {
             var argStrings = [];
-            if (length(this.inputs) == 0 || typeof this.inputs[0] == 'undefined') {
-                argStrings.append('?');
+            if (this.inputs.length == 0 || typeof this.inputs[0] == 'undefined') {
+                argStrings.push('?');
             } else {
                 for (var i in this.inputs) {
-                    argStrings.append(this.inputs[i].toString());
+                    argStrings.push(this.inputs[i].toString());
                 }
             }
-            retString = fcnString + '(' + ','.join(argString) + ')';
+            retString = fcnString + '(' + argStrings.join(',') + ')';
         }
         return(retString);
     }
 
     // Return an array containing all tested equivalent strings.
     allStringEquivs() {
-        var allInputs = [], inputOptions;
+        var allInputs = [], inputOptions = [];
         for (var i in this.inputs) {
-            inputOptions.append(this.inputs[i].allStringEquivs());
+            inputOptions.push(this.inputs[i].allStringEquivs());
         }
         var retValue = [];
         var fcnString = this.getName();
         // Want to create a list of all possible input representations.
         function generateArgs(left, rightOptions) {
-            if (length(rightOptions)==0) {
-                allInputs.append(left);
+            if (rightOptions.length==0) {
+                allInputs.push(left);
             } else {
-                var N = length(left);
+                var N = left.length;
                 var newLeft = [];
                 for (var k in left) {
-                    newLeft.append(left[k]);
+                    newLeft.push(left[k]);
                 }
                 for (var k in rightOptions[0]) {
                     newLeft[N] = rightOptions[0][k];
@@ -169,7 +169,7 @@ export class function_expr extends expression {
         }
         generateArgs([], inputOptions);
         for (var i in allInputs) {
-            retValue[i] = fcnString+'('+','.join(allInputs[i])+')';
+            retValue[i] = fcnString+'(' + allInputs[i].join('+') + ')';
         }
 
         return(retValue);
@@ -183,10 +183,10 @@ export class function_expr extends expression {
         var fcnString;
         var argStrings = [];
         if (typeof this.inputs[0] == 'undefined') {
-            argStrings.append('?');
+            argStrings.push('?');
         } else {
-            for (i in this.inputs) {
-                argStrings.append(this.inputs[i].toTeX(showSelect));
+            for (var i in this.inputs) {
+                argStrings.push(this.inputs[i].toTeX(showSelect));
                 if (showSelect && this.select) {
                     argStrings[i] = "{\\color{blue}" + argStrings[i] + "}";
                 }
@@ -256,7 +256,7 @@ export class function_expr extends expression {
                 fcnString = '\\log_{10}'
                 break;
             default:
-                if (name.length > 1) {
+                if (this.name.length > 1) {
                     fcnString = '\\mathrm{' + this.name + '}';
                 } else {
                     fcnString = this.name;
@@ -276,7 +276,7 @@ export class function_expr extends expression {
             texString = '';
         }
         if (texString == '') {
-            texString = fcnString + ' \\mathopen{}\\left(' + ','.join(argStrings) + '\\right)\\mathclose{}';
+            texString = fcnString + ' \\mathopen{}\\left(' + argStrings.join(',') + '\\right)\\mathclose{}';
         }
         return(texString);
     }

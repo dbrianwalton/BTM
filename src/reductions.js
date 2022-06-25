@@ -26,7 +26,20 @@ class Identity {
 }
 
 class Match {
-    constructor(testRule, substExpr, bindings) {
+    constructor(testRule, bindings) {
+        // Find unbound variables.
+        var allVars = testRule.eqExpr.dependencies(),
+            missVars = [];
+        for (var j in allVars) {
+            if (typeof bindings[allVars[j]] == 'undefined') {
+                missVars.push(allVars[j]);
+            }
+        }
+        for (var j in missVars) {
+            bindings[missVars[j]] = "input"+(+j+1)+"";
+        }
+        var substExpr = testRule.eqExpr.compose(bindings);
+
         this.subTeX = substExpr.toTeX();
         this.subStr = substExpr.toString();
         this.name = testRule.description;
@@ -36,6 +49,7 @@ class Match {
             this.equation = testRule.refExpr.toTeX() + "=" + testRule.eqExpr.toTeX();
         }
         this.bindings = bindings;
+        this.numInputs = missVars.length;
         this.ruleID = testRule.idNum;
     }
 }
@@ -109,26 +123,12 @@ export function disableRule(btm, reductionList, equation) {
 ******************* */
 export function findMatchRules(reductionList, testExpr, doValidate) {
     var matchList = [];
-    var identityString;
     var i, testRule;
     for (i in reductionList) {
         testRule = reductionList[i];
         var bindings = testRule.refExpr.match(testExpr, {})
         if (testRule.isActive && bindings !== null) {
-            // Find unbound variables.
-            var allVars = testRule.eqExpr.dependencies(),
-                missVars = [];
-            for (var j in allVars) {
-                if (typeof bindings[allVars[j]] == 'undefined') {
-                    missVars.push(allVars[j]);
-                }
-            }
-            for (var j in missVars) {
-                bindings[missVars[j]] = "input"+(+j+1)+"";
-            }
-            var subExpr = testRule.eqExpr.compose(bindings);
-
-            var match = new Match(testRule, subExpr, bindings);
+            var match = new Match(testRule, bindings);
             matchList.push(match);
         }
     }

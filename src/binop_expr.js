@@ -371,9 +371,29 @@ export class binop_expr extends expression {
         return(retVal);
     }
 
+    // See if this operator is now redundant.
+    // Return the resulting expression.
+    reduce() {
+        var newExpr = this;
+        if (this.inputs.length <= 1) {
+            if (this.inputs.length == 0) {
+                // Sum with no elements = 0
+                // Product with no elements = 1
+                newExpr = new scalar_expr(this.btm, this.op == '+' ? 0 : 1);
+            } else {
+                // Sum or product with one element *is* that element.
+                newExpr = this.inputs[0].reduce();
+            }
+            newExpr.parent = this.parent;
+            if (this.parent !== null) {
+                this.parent.inputSubst(this, newExpr);
+            }
+        }
+        return(newExpr);
+    }
+
     simplifyConstants() {
         var retVal = this;
-
         this.inputs[0] = this.inputs[0].simplifyConstants();
         this.inputs[0].parent = this;
         this.inputs[1] = this.inputs[1].simplifyConstants();

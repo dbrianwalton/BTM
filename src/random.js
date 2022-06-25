@@ -8,6 +8,7 @@
  * Date: @DATE
  */
 
+import { rational_number } from "./rational_number.js"
 
 /* ****************************************************
 *    Routines for dealing with random values
@@ -250,7 +251,7 @@ export class RNG {
             a[i] = min+i;
         }
         for (i=0; i<k; i++) {
-            j = Math.floor( (max-min+1-i)*Math.random() );
+            j = Math.floor( (max-min+1-i)*this.random() );
             b[i] = a.splice(j,1)[0];
         }
 
@@ -262,8 +263,8 @@ export class RNG {
         var p, q;
 
         // Find the raw rational number
-        p = randInt(pLims[0], pLims[1]);
-        q = randInt(qLims[0], qLims[1]);
+        p = this.randInt(pLims[0], pLims[1]);
+        q = this.randInt(qLims[0], qLims[1]);
 
         return (new rational_number(p,q));
     }

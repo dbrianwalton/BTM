@@ -12,11 +12,12 @@
 ** Evaluating expressions occurs in the context of a BTM environment.
 ************************* */
 
-import { defaultReductions, defaultSumReductions, defaultProductReductions, disableRule, newRule } from "./reductions.js"
+import { defaultReductions, defaultSumReductions, defaultProductReductions, disableRule, newRule, findMatchRules } from "./reductions.js"
 import { scalar_expr } from "./scalar_expr.js";
 import { variable_expr, index_expr } from "./variable_expr.js";
 import { unop_expr } from "./unop_expr.js";
 import { binop_expr } from "./binop_expr.js";
+import { multiop_expr } from "./multiop_expr.js";
 import { function_expr } from "./function_expr.js";
 import { deriv_expr } from "./deriv_expr.js";
 import { RNG } from "./random.js"
@@ -49,6 +50,10 @@ export const exprValue = { undef: -1, bool : 0, numeric : 1 };
 
 export class BTM {
     constructor(settings) {
+        if (settings === undefined) {
+            settings = {};
+            settings.seed = '1234';
+        }
         // Each instance of BTM environment needs bindings across all expressions.
         this.randomBindings = {};
         this.bindings = {};
@@ -57,6 +62,9 @@ export class BTM {
         this.data.params = {};
         this.data.variables = {};
         this.data.expressions = {};
+        this.opPrec = opPrec;
+        this.exprType = exprType;
+        this.exprValue = exprValue;
         this.options = {
             negativeNumbers: true,
             absTol: 1e-8,
@@ -65,6 +73,8 @@ export class BTM {
             doFlatten: false 
         };
         this.setReductionRules();
+        this.multiop_expr = multiop_expr;
+        this.binop_expr = binop_expr;
 
         // Generate a random generator. We might be passed either a pre-seeded `rand` function or a seed for our own.
         let rngOptions = {};
@@ -143,6 +153,14 @@ export class BTM {
 
     disableReductionRule(equation) {
         disableRule(this, this.reduceRules, equation);
+    }
+
+    addRule(ruleList, equation, description, useOneWay){
+        newRule(this, ruleList, equation, description, true, useOneWay);
+    }
+
+    findMatchRules(reductionList, testExpr, doValidate) {
+        return findMatchRules(reductionList, testExpr, doValidate);
     }
 
     addMathObject(name, context, newObject) {
