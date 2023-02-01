@@ -48,6 +48,10 @@ export const exprType = {
 
 export const exprValue = { undef: -1, bool : 0, numeric : 1 };
 
+export function toTeX(expr) {
+    return typeof expr.toTeX === "function" ? expr.toTeX() : expr;
+}
+
 export class BTM {
     constructor(settings) {
         if (settings === undefined) {
@@ -276,7 +280,7 @@ export class BTM {
     // This routine takes the text and looks for strings in mustaches {{name}}
     // It replaces this element with the corresponding parameter, variable, or expression.
     // These should have been previously parsed and stored in this.data.
-    decodeFormula = function(statement, displayMode) {
+    decodeFormula(statement, displayMode) {
         // First find all of the expected substitutions.
         var substRequestList = {};
         var matchRE = /\{\{[A-Za-z]\w*\}\}/g;
@@ -785,3 +789,4 @@ function TestNameIsComposite(text, bindings) {
 
 
 window.BTM = BTM;
+window.toTeX = toTeX;
