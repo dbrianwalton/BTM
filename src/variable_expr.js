@@ -156,7 +156,7 @@ export class variable_expr extends expression {
                     break;
             }
         } else {
-            retVal = bindings[this.name];
+            retVal = new scalar_expr(bindings[this.name]);
         }
 
         return(retVal);
