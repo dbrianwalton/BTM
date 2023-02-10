@@ -30,7 +30,7 @@ export class scalar_expr extends expression {
             } else if (number.constructor.name === "scalar_expr") {
                 this.number = number.number;
             } else {
-                console.log("Trying to instantiate a scalar_expr with a non-number object");
+                console.log("Trying to instantiate a scalar_expr with a non-number object: " + number);
             }
         } else if (Math.floor(number)==number) {
             this.number = new rational_number(number, 1);
