@@ -786,7 +786,3 @@ function TestNameIsComposite(text, bindings) {
   }
   return retStruct;
 }
-
-
-window.BTM = BTM;
-window.toTeX = toTeX;
