@@ -21,7 +21,7 @@ export class scalar_expr extends expression {
     constructor(btm, number) {
         super(btm);
         this.type = exprType.number;
-        if (typeof number == "object") {
+        if (typeof number === "object" && number.constructor.name !== "Number") {
             if (number.constructor.name === "rational_number"
                 ||
                 number.constructor.name === "real_number")    
