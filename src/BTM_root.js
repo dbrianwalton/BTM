@@ -189,9 +189,21 @@ export class BTM {
 
         switch (distr) {
             case 'discrete':
-                let Nvals = Math.floor((options.max-options.min) / options.by)+1;
+                let min = options.min;
+                if (typeof min === 'object' && min.constructor.name !== 'Number') {
+                    min = min.value();
+                }
+                let max = options.max;
+                if (typeof max === 'object' && max.constructor.name !== 'Number') {
+                    max = max.value();
+                }
+                let by = options.by;
+                if (typeof by === 'object' && by.constructor.name !== 'Number') {
+                    by = by.value();
+                }
+                let Nvals = Math.floor((max-min) / by)+1;
                 do {
-                    rndVal = options.min + options.by * this.rng.randInt(0,Nvals-1);
+                    rndVal = min + by * this.rng.randInt(0,Nvals-1);
                 } while (options.nonzero && Math.abs(rndVal) < this.options.absTol);
                 break;
         }
@@ -209,11 +221,23 @@ export class BTM {
             }
             switch (distr) {
                 case 'discrete_range':
-                let Nvals = Math.floor((options.max-options.min) / options.by)+1;
-                do {
-                    newParam = options.min + options.by * this.rng.randInt(0,Nvals-1);
-                } while (options.nonzero && Math.abs(newParam) < this.options.absTol);
-                break;
+                    let min = options.min;
+                    if (typeof min === 'object' && min.constructor.name !== 'Number') {
+                        min = min.value();
+                    }
+                    let max = options.max;
+                    if (typeof max === 'object' && max.constructor.name !== 'Number') {
+                        max = max.value();
+                    }
+                    let by = options.by;
+                    if (typeof by === 'object' && by.constructor.name !== 'Number') {
+                        by = by.value();
+                    }
+                    let Nvals = Math.floor((max-min) / by)+1;
+                    do {
+                        newParam = min + by * this.rng.randInt(0,Nvals-1);
+                    } while (options.nonzero && Math.abs(newParam) < this.options.absTol);
+                    break;
             }
         } else if (options.mode == 'calculate') {
             newParam = this.parse(options.formula, "formula").evaluate(this.data.params);
