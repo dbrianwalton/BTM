@@ -1,8 +1,13 @@
 {
   "name": "btm-expressions",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "BTM (bowtie-math) is a math object model to enable parsing of mathematical expressions into a tree structure that can be manipulated, evaluated, and compared.",
-  "keywords": ["symbolic", "math", "expressions", "parsing"],
+  "keywords": [
+    "symbolic",
+    "math",
+    "expressions",
+    "parsing"
+  ],
   "homepage": "https://github.com/dbrianwalton/BTM",
   "bugs": {
     "url": "https://github.com/dbrianwalton/BTM/issues"

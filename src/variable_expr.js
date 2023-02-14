@@ -156,7 +156,12 @@ export class variable_expr extends expression {
                     break;
             }
         } else {
-            retVal = new scalar_expr(this.btm, bindings[this.name]);
+            if (typeof bindings[this.name]==='object' &&
+                bindings[this.name].constructor.name !== "Number") {
+                retVal = bindings[this.name].value();
+            } else {
+                retVal = bindings[this.name];
+            }
         }
 
         return(retVal);
