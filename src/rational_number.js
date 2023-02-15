@@ -94,11 +94,11 @@ export class rational_number extends real_number {
     }
 
     equal(other) {
-        if (other.constructor.name != "rational_number") {
-          return (this.value()==other.value());
-        } else {
-          return (this.p.valueOf()==other.p.valueOf()
+        if (other instanceof rational_number) {
+            return (this.p.valueOf()==other.p.valueOf()
                     && this.q.valueOf() == other.q.valueOf());
+        } else {
+            return (this.value()==other.value());
         }
     }
 

@@ -91,6 +91,10 @@ export class BTM {
         this.rng = new RNG(rngOptions);
     }
 
+    toString() {
+        return "stringified BTM environment object";
+    }
+
     // Perform approximate comparison tests using environment settings
     // a < b: -1
     // a ~= b: 0
@@ -190,15 +194,15 @@ export class BTM {
         switch (distr) {
             case 'discrete':
                 let min = options.min;
-                if (typeof min === 'object' && min.constructor.name !== 'Number') {
+                if (typeof min.value === 'function') {
                     min = min.value();
                 }
                 let max = options.max;
-                if (typeof max === 'object' && max.constructor.name !== 'Number') {
+                if (typeof max.value === 'function') {
                     max = max.value();
                 }
                 let by = options.by;
-                if (typeof by === 'object' && by.constructor.name !== 'Number') {
+                if (typeof by.value === 'function') {
                     by = by.value();
                 }
                 let Nvals = Math.floor((max-min) / by)+1;
@@ -222,15 +226,15 @@ export class BTM {
             switch (distr) {
                 case 'discrete_range':
                     let min = options.min;
-                    if (typeof min === 'object' && min.constructor.name !== 'Number') {
+                    if (typeof min.value === 'function') {
                         min = min.value();
                     }
                     let max = options.max;
-                    if (typeof max === 'object' && max.constructor.name !== 'Number') {
+                    if (typeof max.value === 'function') {
                         max = max.value();
                     }
                     let by = options.by;
-                    if (typeof by === 'object' && by.constructor.name !== 'Number') {
+                    if (typeof by.value === 'function') {
                         by = by.value();
                     }
                     let Nvals = Math.floor((max-min) / by)+1;

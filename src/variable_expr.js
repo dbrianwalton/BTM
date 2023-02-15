@@ -156,8 +156,7 @@ export class variable_expr extends expression {
                     break;
             }
         } else {
-            if (typeof bindings[this.name]==='object' &&
-                bindings[this.name].constructor.name !== "Number") {
+            if (typeof bindings[this.name].value === 'function') {
                 retVal = bindings[this.name].value();
             } else {
                 retVal = bindings[this.name];

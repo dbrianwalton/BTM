@@ -21,21 +21,19 @@ export class scalar_expr extends expression {
     constructor(btm, number) {
         super(btm);
         this.type = exprType.number;
-        if (typeof number === "object" && number.constructor.name !== "Number") {
-            if (number.constructor.name === "rational_number"
-                ||
-                number.constructor.name === "real_number")    
-            {
-                this.number = number;
-            } else if (number.constructor.name === "scalar_expr") {
-                this.number = number.number;
+        if (typeof number === "number" ||
+                number instanceof Number) {
+            if (Math.floor(number)==number) {
+                this.number = new rational_number(number, 1);
             } else {
-                console.log("Trying to instantiate a scalar_expr with a non-number object: " + number);
+                this.number = new real_number(number);
             }
-        } else if (Math.floor(number)==number) {
-            this.number = new rational_number(number, 1);
+        } else if (number instanceof real_number) {
+                this.number = number;
+        } else if (number instanceof scalar_expr) {
+            this.number = number.number;
         } else {
-            this.number = new real_number(number);
+            console.log("Trying to instantiate a scalar_expr with a non-number object: " + number);
         }
         this.context = "number";
     }

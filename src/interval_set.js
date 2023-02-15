@@ -25,16 +25,10 @@ export class real_interval extends math_set {
             throw "real_interval constructed with invalid environment";
         }
         super(btm);
-        if (typeof a === 'number' || a instanceof Number || 
-            typeof a == "object" &&
-            (a.constructor.name === "rational_number" || a.constructor.name === "real_number")
-        )) {
+        if (!(a instanceof scalar_expr)) {
             a = new scalar_expr(btm, a);
         }
-        if (typeof b === 'number' || b instanceof Number || 
-            typeof b == "object" &&
-            (b.constructor.name === "rational_number" || b.constructor.name === "real_number")
-        )) {
+        if (!(b instanceof scalar_expr)) {
             b = new scalar_expr(btm, b);
         }
         this.min = a;
