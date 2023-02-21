@@ -91,10 +91,6 @@ export class BTM {
         this.rng = new RNG(rngOptions);
     }
 
-    toString() {
-        return "stringified BTM environment object";
-    }
-
     // Perform approximate comparison tests using environment settings
     // a < b: -1
     // a ~= b: 0
