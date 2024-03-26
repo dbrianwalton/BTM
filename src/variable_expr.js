@@ -16,8 +16,8 @@ import { scalar_expr } from "./scalar_expr.js"
 import { exprType, exprValue } from "./BTM_root.js"
 
 export class variable_expr extends expression {
-    constructor(btm, name) {
-        super(btm);
+    constructor(name) {
+        super();
         this.type = exprType.variable;
         this.name = name;
 

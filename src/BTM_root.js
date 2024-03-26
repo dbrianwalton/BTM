@@ -304,7 +304,9 @@ export class BTM {
         if (typeof substExpr == "string") {
             substExpr = this.parse(substExpr, "formula");
         }
-        return myExpr.compose({substVar : substExpr});
+        var binding = {};
+        binding[substVar] = substExpr;
+        return myExpr.compose(binding);
     }
 
     addExpression(name, expression) {
