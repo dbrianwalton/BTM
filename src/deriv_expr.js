@@ -17,16 +17,16 @@ import { variable_expr } from "./variable_expr.js"
 import { exprType } from "./BTM_root.js"
 
 export class deriv_expr extends expression {
-    constructor(btm, formula, variable, atValue) {
-        super(btm);
+    constructor(formula, variable, atValue) {
+        super();
         this.type = exprType.operator;
         this.op = "D";
         if (typeof formula == 'undefined')
-            formula = new expression(this.btm);
+            formula = new expression();
         if (typeof variable == 'undefined') {
-            variable = new variable_expr(this.btm, 'x');
+            variable = new variable_expr('x');
         } else if (typeof variable == 'string') {
-            variable = new variable_expr(this.btm, variable);
+            variable = new variable_expr(variable);
         }
         this.ivar = variable;
         this.ivarValue = atValue;
@@ -112,7 +112,7 @@ export class deriv_expr extends expression {
         return(theStr);
     }
 
-    evaluate(bindings) {
+    evaluate(btm, bindings) {
         var retVal;
         var derivExpr;
         var dbind = {};
@@ -123,20 +123,20 @@ export class deriv_expr extends expression {
         // Compute the derivative of the expression, then evaluate at binding
         derivExpr = this.inputs[0].derivative(this.ivar, bindings);
         derivExpr = derivExpr.compose(dbind);
-        retVal = derivExpr.evaluate(bindings);
+        retVal = derivExpr.evaluate(btm, bindings);
         return(retVal);
     }
 
-    simplifyConstants() {
+    simplifyConstants(btm) {
         return(this);
     }
 
     flatten() {
-      return (new deriv_expr(this.btm, this.inputs[0].flatten(), this.ivar, this.ivarValue));
+      return (new deriv_expr(this.inputs[0].flatten(), this.ivar, this.ivarValue));
     }
 
     copy() {
-      return (new deriv_expr(this.btm, this.inputs[0].copy(), this.ivar, this.ivarValue));
+      return (new deriv_expr(this.inputs[0].copy(), this.ivar, this.ivarValue));
     }
 
 

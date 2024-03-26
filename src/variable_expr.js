@@ -134,7 +134,7 @@ export class variable_expr extends expression {
         return(this.isConst);
     }
 
-    evaluate(bindings) {
+    evaluate(btm, bindings) {
         var retVal;
 
         if (bindings[this.name] == undefined) {
@@ -167,20 +167,16 @@ export class variable_expr extends expression {
     }
 
     copy() {
-        return(new variable_expr(this.btm, this.name));
+        return(new variable_expr(this.name));
     }
 
     compose(bindings) {
         var retVal;
 
         if (bindings[this.name] == undefined) {
-            retVal = new variable_expr(this.btm, this.name);
+            retVal = new variable_expr(this.name);
         } else {
-            if (typeof bindings[this.name] == "string") {
-                retVal = this.btm.parse(bindings[this.name], "formula");
-            } else {
-                retVal = bindings[this.name];
-            }
+            retVal = bindings[this.name];
         }
 
         return(retVal);
@@ -191,15 +187,15 @@ export class variable_expr extends expression {
         var ivarName = (typeof ivar == 'string') ? ivar : ivar.name;
 
         if (this.name === ivarName) {
-            retVal = new scalar_expr(this.btm, 1);
+            retVal = new scalar_expr(1);
 
         // If either a constant or another independent variable, deriv=0
         } else if (this.isConst || varList && varList[this.name] != undefined) {
-            retVal = new scalar_expr(this.btm, 0);
+            retVal = new scalar_expr(0);
 
         // Presuming other variables are dependent variables.
         } else  {
-            retVal = new variable_expr(this.btm, this.name+"'");
+            retVal = new variable_expr(this.name+"'");
         }
         return(retVal);
     }
@@ -238,11 +234,7 @@ export class variable_expr extends expression {
 
 export class index_expr {
     
-    constructor(btm, name, index) {
-        this.btm = btm;
-        if (!(btm instanceof BTM)) {
-            console.log("variable_expr constructed with invalid environment")
-        }
+    constructor(name, index) {
         this.type = exprType.variable;
         this.name = name;
         this.select = false;
@@ -295,7 +287,7 @@ export class index_expr {
         return(depArray);
     }
 
-    evaluate(bindings) {
+    evaluate(btm, bindings) {
         var retVal;
 
         if (bindings[this.boundName] == undefined) {
@@ -309,7 +301,7 @@ export class index_expr {
             if (this.k != undefined) {
                 tmpBind[this.k] = bindings["row"];
             }
-            var i = this.index.evaluate(tmpBind)-1;
+            var i = this.index.evaluate(btm, tmpBind)-1;
             if (i >= 0 && i<bindings[this.boundName].length) {
                 retVal = bindings[this.boundName][i];
             }

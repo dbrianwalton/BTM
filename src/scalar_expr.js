@@ -18,8 +18,8 @@ import { rational_number } from "./rational_number.js"
 import { exprType } from "./BTM_root.js"
 
 export class scalar_expr extends expression {
-    constructor(btm, number) {
-        super(btm);
+    constructor(number) {
+        super();
         this.type = exprType.number;
         if (typeof number === "number" ||
                 number instanceof Number) {
@@ -78,11 +78,11 @@ export class scalar_expr extends expression {
     }
     
     // Combine constants where possible
-    simplifyConstants() {
+    simplifyConstants(btm) {
         var retValue;
-        if (!this.btm.options.negativeNumbers && this.number.p < 0) {
+        if (!btm.options.negativeNumbers && this.number.p < 0) {
             var theNumber = this.number.multiply(-1);
-            retValue = new unop_expr(this.btm, '-', new scalar_expr(this.btm, theNumber));
+            retValue = new unop_expr('-', new scalar_expr(theNumber));
         } else {
             retValue = this;
         }
@@ -93,20 +93,20 @@ export class scalar_expr extends expression {
         return(this.number.value());
     }
 
-    evaluate(bindings) {
+    evaluate(btm, bindings) {
         return(this.value());
     }
     
     copy() {
-        return(new scalar_expr(this.btm, this.number));
+        return(new scalar_expr(this.number));
     }
     
     compose(bindings) {
-        return(new scalar_expr(this.btm, this.number));
+        return(new scalar_expr(this.number));
     }
     
     derivative(ivar, varList) {
-        return(new scalar_expr(this.btm, 0));
+        return(new scalar_expr(0));
     }
     
     /*
@@ -120,7 +120,7 @@ export class scalar_expr extends expression {
     
         // Special named constants can not match expressions.
         if (expr.isConstant() && expr.type != exprType.number) {
-            var testExpr = this.btm.parse(expr.toString(), expr.context).simplifyConstants();
+            var testExpr = expr.copy().simplifyConstants();
             if (this.toString() === testExpr.toString()) {
               retValue = bindings;
             }

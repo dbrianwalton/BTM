@@ -619,7 +619,7 @@ function updateIdentities() {
 function doSubstitute(id) {
   var subFormula = algebWrist.identityList[id].subStr;
   if (algebWrist.selectExpr !== null) {
-    var subExpr = parseExpression(subFormula),
+    var subExpr = myBTM.parseExpression(subFormula),
       n = algebWrist.identityList[id].numInputs;
 
     if (n > 0) {
@@ -890,7 +890,7 @@ function applyParentActiveRule() {
     var j = testExpr.inputs.indexOf(selectExpr);
     for (var i in selectExpr.parent.inputs) {
       if (i != j) {
-        newInputs.push(parseExpression(selectExpr.parent.inputs[i].toString()));
+        newInputs.push(myBTM.parseExpression(selectExpr.parent.inputs[i].toString()));
       }
       testExpr = new multiop_expr(selectExpr.parent.op, [new multiop_expr(selectExpr.parent.op, newInputs), selectExpr]);
     }
@@ -901,7 +901,7 @@ function applyParentActiveRule() {
 
   // There was a valid simplification so make the substitution.
   if (ruleMatches.length > 0) {
-    var subExpr = parseExpression(ruleMatches[0].subStr).simplifyConstants();
+    var subExpr = myBTM.parseExpression(ruleMatches[0].subStr).simplifyConstants();
 
     if (algebWrist.selectExpr.parent.parent === null) {
       algebWrist.theExpr = subExpr;
@@ -926,7 +926,7 @@ function applyActiveInputRule(whichInput) {
   if (selectExpr.type == exprType.multiop && selectExpr.inputs.length > 2) {
     for (var i in selectExpr.inputs) {
       if (i != whichInput) {
-        newInputs.push(parseExpression(selectExpr.inputs[i].toString()));
+        newInputs.push(myBTM.parseExpression(selectExpr.inputs[i].toString()));
       }
     }
     testExpr = new multiop_expr(selectExpr.op, [new multiop_expr(selectExpr.op, newInputs), selectExpr.inputs[whichInput]]);
@@ -938,7 +938,7 @@ function applyActiveInputRule(whichInput) {
 
   // There was a valid simplification so make the substitution.
   if (ruleMatches.length > 0) {
-    var subExpr = parseExpression(ruleMatches[0].subStr).simplifyConstants();
+    var subExpr = myBTM.parseExpression(ruleMatches[0].subStr).simplifyConstants();
 
     if (algebWrist.selectExpr.parent === null) {
       algebWrist.theExpr = subExpr;
@@ -962,7 +962,7 @@ function applyActiveInputRule(whichInput) {
       sumTerm = testExpr.inputs[whichInput];
     newInputs = [];
     for (var i in sumTerm.inputs) {
-      newInputs[i] = new multiop_expr('*', [parseExpression(factorStr), sumTerm.inputs[i]]).simplifyConstants();
+      newInputs[i] = new multiop_expr('*', [myBTM.parseExpression(factorStr), sumTerm.inputs[i]]).simplifyConstants();
     }
     subExpr = new multiop_expr('+', newInputs);
     if (algebWrist.selectExpr.parent === null) {
@@ -1054,7 +1054,7 @@ window. doTreeAreaClickUp = function (timeStamp, clientX, clientY) {
       
         // There was a valid simplification so make the substitution.
         if (ruleMatches.length > 0) {
-          selectExpr.inputs[dropIndex] = parseExpression(ruleMatches[0].subStr).simplifyConstants();
+          selectExpr.inputs[dropIndex] = myBTM.parseExpression(ruleMatches[0].subStr).simplifyConstants();
           selectExpr.inputs[dropIndex].parent = selectExpr;
           selectExpr.inputs = selectExpr.inputs.slice(0,dragIndex)
             .concat(selectExpr.inputs.slice(dragIndex+1));
@@ -1071,7 +1071,7 @@ window. doTreeAreaClickUp = function (timeStamp, clientX, clientY) {
           var newExpr,
             factorStr = dragInput.toString();
           for (var i in dropInput.inputs) {
-            newInputs[i] = new multiop_expr('*', [parseExpression(factorStr), dropInput.inputs[i]]).simplifyConstants();
+            newInputs[i] = new multiop_expr('*', [myBTM.parseExpression(factorStr), dropInput.inputs[i]]).simplifyConstants();
           }
           selectExpr.inputs[dropIndex] = new multiop_expr('+', newInputs);
           selectExpr.inputs[dropIndex].parent = selectExpr;

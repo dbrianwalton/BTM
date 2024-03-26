@@ -66,6 +66,7 @@ export class BTM {
         this.data.params = {};
         this.data.variables = {};
         this.data.expressions = {};
+        this.data.functions = {};
         this.opPrec = opPrec;
         this.exprType = exprType;
         this.exprValue = exprValue;
@@ -207,7 +208,7 @@ export class BTM {
                 } while (options.nonzero && Math.abs(rndVal) < this.options.absTol);
                 break;
         }
-        rndScalar = new scalar_expr(this, rndVal);
+        rndScalar = new scalar_expr(rndVal);
         return rndScalar;
     }
 
@@ -240,7 +241,7 @@ export class BTM {
                     break;
             }
         } else if (options.mode == 'calculate') {
-            newParam = this.parse(options.formula, "formula").evaluate(this.data.params);
+            newParam = this.parse(options.formula, "formula").evaluate(this, this.data.params);
         } else if (options.mode == 'rational') {
             newParam = this.parse(new rational_number(options.numer,options.denom).toString(), "number");
         } else if (options.mode == 'static') {
@@ -274,8 +275,8 @@ export class BTM {
         } else if (typeof mathObject === 'object') {
             theExpr = mathObject;
         }
-        retValue = theExpr.evaluate(bindings);
-        newExpr = new scalar_expr(this, retValue);
+        retValue = theExpr.evaluate(this, bindings);
+        newExpr = new scalar_expr(retValue);
         return newExpr;
     }
 
@@ -283,13 +284,27 @@ export class BTM {
         var newExpr;
         // Not yet parsed
         if (typeof expression === 'string') {
-        var formula = this.decodeFormula(expression);
-        newExpr = this.parse(formula, context);
+            var formula = this.decodeFormula(expression);
+            newExpr = this.parse(formula, context);
         // Already parsed
         } else if (typeof expression === 'object') {
             newExpr = expression;
         }
         return newExpr;
+    }
+
+    composeExpression(expression, substitution) {
+        var myExpr = expression;
+        var mySubs = Object.entries(substitution);
+        var substVar, substExpr;
+        [substVar, substExpr] = mySubs[0];
+        if (typeof myExpr == "string") {
+            myExpr = this.parse(myExpr, "formula");
+        }
+        if (typeof substExpr == "string") {
+            substExpr = this.parse(substExpr, "formula");
+        }
+        return myExpr.compose({substVar : substExpr});
     }
 
     addExpression(name, expression) {
@@ -299,6 +314,39 @@ export class BTM {
         this.data.allValues[name] = newExpr;
 
         return newExpr;
+    }
+
+    addFunction(name, input, expression) {
+        if (arguments.length < 2) {
+            input = "x";
+        }
+        // No expression? Make it random.
+        if (arguments.length < 3) {
+            var formula = new scalar_expr(this.rng.randRational([-20,20],[1,15]));
+            var newTerm;
+            for (var i=1; i<=6; i++) {
+                if (Array.isArray(input)) {
+                    newTerm = this.parse("sin("+i+"*"+input[0]+")", "formula");
+                    for (var j=1; j<input.length; j++) {
+                        newTerm = new binop_expr("*",
+                            this.parse("sin("+i+"*"+input[j]+")", "formula"),
+                            newTerm
+                        );
+                    }
+                } else {
+                    newTerm = this.parse("sin("+i+"*"+input+")", "formula");
+                }
+                newTerm = new binop_expr("*",
+                                new scalar_expr(this.rng.randRational([-20,20],[1,10])),
+                                newTerm);
+                formula = new binop_expr("+", formula, newTerm);
+            }
+            expression = formula;
+        }
+        var functionEntry = {};
+        functionEntry["input"] = input;
+        functionEntry["value"] = expression;
+        this.functions[name] = functionEntry;
     }
 
     // This routine takes the text and looks for strings in mustaches {{name}}
@@ -341,7 +389,7 @@ export class BTM {
         if (typeof expr2 === 'string') {
             expr2 = this.parse(expr2, "formula")
         }
-        return (expr1.compare(expr2));
+        return (expr1.compare(this, expr2));
     }
 
     getParser(context) {
@@ -426,12 +474,12 @@ export class BTM {
 
             // Deal with negative numbers separately.
             if (btm.options.negativeNumbers && input.type == exprType.number && oldOp.op == '-') {
-              newExpr = new scalar_expr(btm, input.number.multiply(-1));
+              newExpr = new scalar_expr(input.number.multiply(-1));
             } else {
-              newExpr = new unop_expr(btm, oldOp.op, input);
+              newExpr = new unop_expr(oldOp.op, input);
             }
           } else {
-            newExpr = new expression(btm);
+            newExpr = new expression();
             newExpr.setParsingError("Incomplete formula: missing value for " + oldOp.op);
           }
         // Binary: Will be *two* operands.
@@ -439,9 +487,9 @@ export class BTM {
           if (operandStack.length > 1) {
             var inputB = operandStack.pop();
             var inputA = operandStack.pop();
-            newExpr = new binop_expr(btm, oldOp.op, inputA, inputB);
+            newExpr = new binop_expr(oldOp.op, inputA, inputB);
           } else {
-            newExpr = new expression(btm);
+            newExpr = new expression();
             newExpr.setParsingError("Incomplete formula: missing value for " + oldOp.op);
           }
         }
@@ -492,7 +540,7 @@ export class BTM {
         endPos = completeAbsValue(workingStr, charPos);
         var subExprStr = workingStr.slice(charPos+1,endPos);
         var subExpr = this.parse(subExprStr, context, bindings);
-        var newExpr = new function_expr(this, 'abs', subExpr);
+        var newExpr = new function_expr('abs', subExpr);
         operandStack.push(newExpr);
         newElement = 0;
         charPos = endPos;
@@ -500,7 +548,7 @@ export class BTM {
       // It could be a number. Just read it off
       } else if (workingStr.substr(charPos).search(numberMatch) == 0) {
         endPos = completeNumber(workingStr, charPos, options);
-        var newExpr = new scalar_expr(this, new Number(workingStr.slice(charPos, endPos)));
+        var newExpr = new scalar_expr(new Number(workingStr.slice(charPos, endPos)));
         if (options && options.noDecimals && workingStr.charAt(charPos) == '.') {
           newExpr.setParsingError("Whole numbers only. No decimal values are allowed.")
         }
@@ -533,18 +581,18 @@ export class BTM {
             var entries = workingStr.slice(endPos+1,endParen).split(",");
             expr = this.parse(entries[0], context, bindings);
             if (entries.length == 1) {
-              newExpr = new deriv_expr(this, expr, 'x');
+              newExpr = new deriv_expr(expr, 'x');
             } else {
               ivar = this.parse(entries[1], context, bindings);
               // D(f(x),x,c) means f'(c)
               if (entries.length > 2) {
                 ivarValue = this.parse(entries[2], context, bindings);
               }
-              newExpr = new deriv_expr(this, expr, ivar, ivarValue);
+              newExpr = new deriv_expr(expr, ivar, ivarValue);
             }
           } else {
             var subExpr = this.parse(workingStr.slice(endPos+1,endParen), context, bindings);
-            newExpr = new function_expr(this, theName, subExpr);
+            newExpr = new function_expr(theName, subExpr);
           }
           operandStack.push(newExpr);
           newElement = 0;
@@ -563,7 +611,7 @@ export class BTM {
               endParen = endPos+1;
             }
             var indexExpr = this.parse(workingStr.slice(endPos+1,endParen), context, bindings);
-            var newExpr = new index_expr(this, theName, indexExpr);
+            var newExpr = new index_expr(theName, indexExpr);
             if (hasError) {
               newExpr.setParsingError(parseError);
               parseError = "";
@@ -572,7 +620,7 @@ export class BTM {
             newElement = 0;
             charPos = endParen;
           } else {
-            var newExpr = new variable_expr(this, theName);
+            var newExpr = new variable_expr(theName);
             operandStack.push(newExpr);
             newElement = 0;
             charPos = endPos-1;
@@ -624,7 +672,7 @@ export class BTM {
                 if (!finalExpression.isConstant()) {
                     //throw "The expression should be a constant but depends on variables."
                 }
-                finalExpression = new scalar_expr(this, finalExpression.value());
+                finalExpression = new scalar_expr(finalExpression.value());
                 break;
             case 'formula':
                 break;

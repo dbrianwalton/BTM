@@ -20,16 +20,13 @@ export class math_set extends MathObject {
 }
 
 export class real_interval extends math_set {
-    constructor(btm, a, b, interval_type) {
-        if (!(btm instanceof BTM)) {
-            throw "real_interval constructed with invalid environment";
-        }
-        super(btm);
-        if (!(a instanceof scalar_expr)) {
-            a = new scalar_expr(btm, a);
-        }
+    constructor(a, b, interval_type) {
+        super();
+        a = new scalar_expr(a);
+    }
+    if (!(a instanceof scalar_expr)) {
         if (!(b instanceof scalar_expr)) {
-            b = new scalar_expr(btm, b);
+            b = new scalar_expr(b);
         }
         this.min = a;
         this.max = b;

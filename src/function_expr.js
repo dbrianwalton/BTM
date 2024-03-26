@@ -20,8 +20,8 @@ import { binop_expr } from "./binop_expr.js"
 import { exprType } from "./BTM_root.js"
 
 export class function_expr extends expression {
-    constructor(btm, name, inputExpr, restrictDomain) {
-        super(btm);
+    constructor(name, inputExpr, restrictDomain) {
+        super();
         this.type = exprType.fcn;
         // Count how many derivatives.
         var primePos = name.indexOf("'");
@@ -33,7 +33,7 @@ export class function_expr extends expression {
             this.name = name;
         }
         if (typeof inputExpr == 'undefined')
-            inputExpr = new expression(this.btm);
+            inputExpr = new expression();
         this.inputs = [inputExpr];
         inputExpr.parent = this;
         this.domain = restrictDomain;
@@ -74,40 +74,12 @@ export class function_expr extends expression {
                 break;
             default:
                 this.builtin = false;
-                // When using a custom function for the first time, we need to create
-                // a random dummy function for work when not bound to definition.
-                // See if we have already used this function.
-                // For consistency, we should keep it the same.
-                var functionEntry = this.btm.randomBindings[this.name];
-                // If never used previously, generate a random function.
-                // This will allow valid comparisons to occur.
-                if (functionEntry == undefined) {
-                    functionEntry = {};
-                    functionEntry["input"] = "x";
-                    var formula = new scalar_expr(this.btm, this.btm.rng.randRational([-20,20],[1,15]));
-                    var newTerm, varTerm;
-                    for (var i=1; i<=6; i++) {
-                        newTerm = this.btm.parse("sin("+i+"*x)", "formula");
-                        newTerm = new binop_expr(this.btm, "*",
-                                        new scalar_expr(this.btm, this.btm.rng.randRational([-20,20],[1,10])),
-                                        newTerm);
-                        formula = new binop_expr(this.btm, "+", formula, newTerm);
-                    }
-                    functionEntry["value"] = [ formula ];
-                    this.btm.randomBindings[this.name] = functionEntry;
-                }
-                if (this.derivs > 0) {
-                    var xvar = new variable_expr(this.btm, "x");
-                    for (var i=functionEntry["value"].length; i<=this.derivs; i++) {
-                        functionEntry["value"][i] = functionEntry["value"][i-1].derivative(xvar, {"x":0});
-                    }
-                }
                 break;
         }
         // If using a derivative of a known function, then we should compute that in advance.
         if (this.builtin && this.derivs > 0) {
-            var xvar = new variable_expr(this.btm, "x");
-            var deriv = new function_expr(this.btm, this.name, xvar);
+            var xvar = new variable_expr("x");
+            var deriv = new function_expr(this.name, xvar);
             for (var i=0; i<this.derivs; i++) {
                 deriv = deriv.derivative(xvar, {"x":0});
             }
@@ -312,7 +284,7 @@ export class function_expr extends expression {
                 texString = '<apply><log/><logbase><cn>10</cn></logbase>' + argString + '</apply>';
                 break;
             default:
-                texString = '<apply><ci>' + name + '</ci>' + argString + '</apply>';
+                texString = '<apply><ci>' + this.name + '</ci>' + argString + '</apply>';
                 break;
         }
         return(texString);
@@ -392,8 +364,8 @@ export class function_expr extends expression {
         return(fcnString+"(\\Box)");
     }
 
-    evaluate(bindings) {
-        var inputVal = this.inputs[0].evaluate(bindings);
+    evaluate(btm, bindings) {
+        var inputVal = this.inputs[0].evaluate(btm, bindings);
         var retVal = undefined;
 
         if (inputVal == undefined) {
@@ -403,7 +375,7 @@ export class function_expr extends expression {
         // Built-in functions with derivatives have computed derivative earlier.
         if (this.builtin && this.derivs > 0) {
             if (this.alternate != undefined) {
-                retVal = this.alternate.evaluate(bindings);
+                retVal = this.alternate.evaluate(btm, bindings);
             } else {
                 console.log("Error: Built-in function called with unspecified derivative formula.");
             }
@@ -484,7 +456,7 @@ export class function_expr extends expression {
                     default:
                         // See if we have already used this function.
                         // For consistency, we should keep it the same.
-                        var functionEntry = this.btm.randomBindings[this.name];
+                        var functionEntry = btm.functions[this.name];
                         // If never used previously, generate a random function.
                         // This will allow valid comparisons to occur.
                         if (functionEntry == undefined) {
@@ -496,17 +468,21 @@ export class function_expr extends expression {
                             fBind[ key ] = bindings[ key ];
                         });
                         // Now, use the variable of the function.
-                        fBind[functionEntry["input"]] = inputVal;
+                        var inVar = functionEntry["input"];
+                        if (Array.isArray(inVar)) {
+                            console.log("Error: Function is defined to expect multiple inputs. Not yet implemented.");
+                        }
+                        fBind[inVar] = inputVal;
                         // See if we need additional derivatives in binding
                         if (this.derivs >= functionEntry["value"].length) {
-                            var ivar = new variable_expr(this.btm, functionEntry["input"]);
+                            var ivar = new variable_expr(inVar);
                             var varBind = {};
                             varBind[ivar] = 0;
                             for (var i=functionEntry["value"].length; i <= this.derivs; i++) {
                                 functionEntry["value"][i] = functionEntry["value"][i-1].derivative(ivar, varBind);
                             }
                         }
-                        retVal = functionEntry["value"][this.derivs].evaluate(fBind);
+                        retVal = functionEntry["value"][this.derivs].evaluate(btm, fBind);
                         break;
                 }
             } else {
@@ -517,32 +493,36 @@ export class function_expr extends expression {
                     fBind[ key ] = bindings[ key ];
                 });
                 // Now, use the variable of the function.
-                fBind[functionEntry["input"]] = inputVal;
+                var inVar = functionEntry["input"];
+                if (Array.isArray(inVar)) {
+                    console.log("Error: Function is defined to expect multiple inputs. Not yet implemented.");
+                }
+                fBind[inVar] = inputVal;
                 // See if we need additional derivatives in binding
                 if (this.derivs >= functionEntry["value"].length) {
-                    var ivar = new variable_expr(this.btm, functionEntry["input"]);
+                    var ivar = new variable_expr(inVar);
                     var varBind = {};
                     varBind[ivar] = 0;
                     for (var i=functionEntry["value"].length; i <= this.derivs; i++) {
                         functionEntry["value"][i] = functionEntry["value"][i-1].derivative(ivar, varBind);
                     }
                 }
-                retVal = functionEntry["value"][this.derivs].evaluate(fBind);
+                retVal = functionEntry["value"][this.derivs].evaluate(btm, fBind);
             }
         }
         return(retVal);
     }
 
     flatten() {
-        return(new function_expr(this.btm, this.getName(), this.inputs[0].flatten()));
+        return(new function_expr(this.getName(), this.inputs[0].flatten()));
     }
 
     copy() {
-      return(new function_expr(this.btm, this.getName(), this.inputs[0].copy()));
+      return(new function_expr(this.getName(), this.inputs[0].copy()));
     }
 
     compose(bindings) {
-        return(new function_expr(this.btm, this.getName(), this.inputs[0].compose(bindings)));
+        return(new function_expr(this.getName(), this.inputs[0].compose(bindings)));
     }
 
     derivative(ivar, varList) {
@@ -557,77 +537,77 @@ export class function_expr extends expression {
         }
 
         if (uConst) {
-            theDeriv = new scalar_expr(this.btm, 0);
+            theDeriv = new scalar_expr(0);
         } else {
             var dydu;
 
             switch(this.name) {
                     case 'sin':
-                        dydu = new function_expr(this.btm, 'cos', this.inputs[0]);
+                        dydu = new function_expr('cos', this.inputs[0]);
                         break;
                     case 'cos':
-                        dydu = new unop_expr(this.btm, '-', new function_expr(this.btm, 'sin', this.inputs[0]));
+                        dydu = new unop_expr('-', new function_expr('sin', this.inputs[0]));
                         break;
                     case 'tan':
-                        var theSec = new function_expr(this.btm, 'sec', this.inputs[0]);
-                        dydu = new binop_expr(this.btm, '^', theSec, new scalar_expr(this.btm, 2));
+                        var theSec = new function_expr('sec', this.inputs[0]);
+                        dydu = new binop_expr('^', theSec, new scalar_expr(2));
                         break;
                     case 'csc':
-                        var theCot = new function_expr(this.btm, 'cot', this.inputs[0]);
-                        dydu = new unop_expr(this.btm, '-', new binop_expr(this.btm, '*', this, theCot));
+                        var theCot = new function_expr('cot', this.inputs[0]);
+                        dydu = new unop_expr('-', new binop_expr('*', this, theCot));
                         break;
                     case 'sec':
-                        var theTan = new function_expr(this.btm, 'tan', this.inputs[0]);
-                        dydu = new binop_expr(this.btm, '*', this, theTan);
+                        var theTan = new function_expr('tan', this.inputs[0]);
+                        dydu = new binop_expr('*', this, theTan);
                         break;
                     case 'cot':
-                        var theCsc = new function_expr(this.btm, 'csc', this.inputs[0]);
-                        dydu = new unop_expr(this.btm, '-', new binop_expr(this.btm, '^', theCsc, new scalar_expr(this.btm, 2)));
+                        var theCsc = new function_expr('csc', this.inputs[0]);
+                        dydu = new unop_expr('-', new binop_expr('^', theCsc, new scalar_expr(2)));
                         break;
                     case 'arcsin':
-                        var theCos = new binop_expr(this.btm, '-', new scalar_expr(this.btm, 1), new binop_expr(this.btm, '^', this.inputs[0], new scalar_expr(this.btm, 2)));
-                        dydu = new binop_expr(this.btm, '/', new scalar_expr(this.btm, 1), new function_expr(this.btm, 'sqrt', theCos));
+                        var theCos = new binop_expr('-', new scalar_expr(1), new binop_expr('^', this.inputs[0], new scalar_expr(2)));
+                        dydu = new binop_expr('/', new scalar_expr(1), new function_expr('sqrt', theCos));
                         break;
                     case 'arccos':
-                        var theSin = new binop_expr(this.btm, '-', new scalar_expr(this.btm, 1), new binop_expr(this.btm, '^', this.inputs[0], new scalar_expr(this.btm, 2)));
-                        dydu = new binop_expr(this.btm, '/', new scalar_expr(this.btm, -1), new function_expr(this.btm, 'sqrt', theSin));
+                        var theSin = new binop_expr('-', new scalar_expr(1), new binop_expr('^', this.inputs[0], new scalar_expr(2)));
+                        dydu = new binop_expr('/', new scalar_expr(-1), new function_expr('sqrt', theSin));
                         break;
                     case 'arctan':
-                        var tanSq = new binop_expr(this.btm, '^', this.inputs[0], new scalar_expr(this.btm, 2));
-                        dydu = new binop_expr(this.btm, '/', new scalar_expr(this.btm, 1), new binop_expr(this.btm, '+', new scalar_expr(this.btm, 1), tanSq));
+                        var tanSq = new binop_expr('^', this.inputs[0], new scalar_expr(2));
+                        dydu = new binop_expr('/', new scalar_expr(1), new binop_expr('+', new scalar_expr(1), tanSq));
                         break;
                     case 'arcsec':
-                        var theSq = new binop_expr(this.btm, '^', this.inputs[0], new scalar_expr(this.btm, 2));
-                        var theRad = new binop_expr(this.btm, '-', theSq, new scalar_expr(this.btm, 1));
-                        dydu = new binop_expr(this.btm, '/', new scalar_expr(this.btm, 1), new binop_expr(this.btm, '*', new function_expr(this.btm, 'abs', this.inputs[0]), new function_expr(this.btm, 'sqrt', theRad)));
+                        var theSq = new binop_expr('^', this.inputs[0], new scalar_expr(2));
+                        var theRad = new binop_expr('-', theSq, new scalar_expr(1));
+                        dydu = new binop_expr('/', new scalar_expr(1), new binop_expr('*', new function_expr('abs', this.inputs[0]), new function_expr('sqrt', theRad)));
                         break;
                     case 'arccsc':
-                        var theSq = new binop_expr(this.btm, '^', this.inputs[0], new scalar_expr(this.btm, 2));
-                        var theRad = new binop_expr(this.btm, '-', theSq, new scalar_expr(this.btm, 1));
-                        dydu = new binop_expr(this.btm, '/', new scalar_expr(this.btm, -1), new binop_expr(this.btm, '*', new function_expr(this.btm, 'abs', this.inputs[0]), new function_expr(this.btm, 'sqrt', theRad)));
+                        var theSq = new binop_expr('^', this.inputs[0], new scalar_expr(2));
+                        var theRad = new binop_expr('-', theSq, new scalar_expr(1));
+                        dydu = new binop_expr('/', new scalar_expr(-1), new binop_expr('*', new function_expr('abs', this.inputs[0]), new function_expr('sqrt', theRad)));
                         break;
                     case 'arccot':
-                        var cotSq = new binop_expr(this.btm, '^', this.inputs[0], new scalar_expr(this.btm, 2));
-                        dydu = new binop_expr(this.btm, '/', new scalar_expr(this.btm, -1), new binop_expr(this.btm, '+', new scalar_expr(this.btm, 1), cotSq));
+                        var cotSq = new binop_expr('^', this.inputs[0], new scalar_expr(2));
+                        dydu = new binop_expr('/', new scalar_expr(-1), new binop_expr('+', new scalar_expr(1), cotSq));
                         break;
                     case 'sqrt':
-                        dydu = new binop_expr(this.btm, '/', new scalar_expr(this.btm, 1), new binop_expr(this.btm, '*', new scalar_expr(this.btm, 2), this));
+                        dydu = new binop_expr('/', new scalar_expr(1), new binop_expr('*', new scalar_expr(2), this));
                         break;
                     case 'abs':
-                        dydu = new binop_expr(this.btm, '/', this, this.inputs[0]);
+                        dydu = new binop_expr('/', this, this.inputs[0]);
                         break;
                     case 'exp':
                     case 'expb':
-                        dydu = new function_expr(this.btm, this.name, this.inputs[0]);
+                        dydu = new function_expr(this.name, this.inputs[0]);
                         break;
                     case 'ln':
-                        dydu = new binop_expr(this.btm, '/', new scalar_expr(this.btm, 1), this.inputs[0]);
+                        dydu = new binop_expr('/', new scalar_expr(1), this.inputs[0]);
                         break;
                     case 'log10':
-                        dydu = new binop_expr(this.btm, '/', new scalar_expr(this.btm, Math.LOG10E), this.inputs[0]);
+                        dydu = new binop_expr('/', new scalar_expr(Math.LOG10E), this.inputs[0]);
                         break;
                     default:
-                        dydu = new function_expr(this.btm, this.getName()+"'", this.inputs[0]);
+                        dydu = new function_expr(this.getName()+"'", this.inputs[0]);
                         break;
             }
             if (!uConst && this.inputs[0].type == exprType.variable) {
@@ -638,7 +618,7 @@ export class function_expr extends expression {
                 if (dudx == undefined) {
                     theDeriv = undefined;
                 } else {
-                    theDeriv = new binop_expr(this.btm, '*', dydu, dudx);
+                    theDeriv = new binop_expr('*', dydu, dudx);
                 }
             }
         }

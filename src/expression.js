@@ -12,11 +12,7 @@ import { BTM, exprValue } from "./BTM_root.js"
 import { findMatchRules } from "./reductions.js"
 
 export class MathObject {
-    constructor(btm) {
-        this.btm = btm;
-        if (!(btm instanceof BTM)) {
-            throw "MathObject constructed with invalid environment";
-        }
+    constructor() {
         this.select = false;
         this.parent = null;
         this.inputs = [];
@@ -118,11 +114,8 @@ export class MathObject {
 }
 
 export class expression extends MathObject {
-  constructor(btm) {
-        if (!(btm instanceof BTM)) {
-            throw "expression constructed with invalid environment";
-        }
-        super(btm);
+  constructor() {
+        super();
         this.select = false;
         this.parent = null;
         this.inputs = [];
@@ -224,15 +217,21 @@ export class expression extends MathObject {
 
     // Create a new expression that is a copy.
     copy() {
-        var myCopy = new expression(this.btm);
+        var myCopy = new expression();
+        myCopy.valueType = this.valueType;
+        myCopy.context = this.context;
+        for (var i in this.inputs) {
+            myCopy.inputs[i] = myCopy.inputs[i].copy();
+            myCopy.inputs[i].parent = myCopy;
+        }
         return myCopy;
     }
 
     // When subtree only involves constants, simplify the formula to a value.
     // Default: Look at all descendants (inputs) and simplify there.
-    simplifyConstants() {
+    simplifyConstants(btm) {
         for (var i in this.inputs) {
-            this.inputs[i] = this.inputs[i].simplifyConstants();
+            this.inputs[i] = this.inputs[i].simplifyConstants(btm);
             this.inputs[i].parent = this;
         }
         return(this);
@@ -285,20 +284,20 @@ export class expression extends MathObject {
     }
 
     // Evaluate the expression given the bindings to symbols.
-    evaluate(bindings) {
+    evaluate(btm, bindings) {
         return(0);
     }
 
     // Create a *new* expression where a symbol is *replaced* by a bound expression
     compose(bindings) {
-        return(new expression(this.btm));
+        return(new expression());
     }
 
     // Compare *this* expression to a given *testExpr*.
     // *options* gives options associated with testing (e.g., relative tolerance)
     // but also supports fixing certain bindings.
     // Supports abstract input matching against variables using *matchInputs*
-    compare(testExpr, options, matchInputs) {
+    compare(btm, testExpr, options, matchInputs) {
         var isEqual = true;
         var i, n;
 
@@ -390,8 +389,8 @@ export class expression extends MathObject {
                 x = variableList[i];
                 bindings[x] = testPointList[i][odometer[i]];
             }
-            y1 = this.evaluate(bindings);
-            y2 = testExpr.evaluate(bindings);
+            y1 = this.evaluate(btm, bindings);
+            y2 = testExpr.evaluate(btm, bindings);
             // Both finite? Check for relative error.
             if (isFinite(y1) && isFinite(y2)) {
                 if (!(Math.abs(y1)<1e-12 && Math.abs(y2)<1e-12)
@@ -460,25 +459,25 @@ export class expression extends MathObject {
     }
 
     // Apply reduction rules to create a reduced expression
-    reduce() {
-        var workExpr = this.simplifyConstants();
+    reduce(btm) {
+        var workExpr = this.simplifyConstants(btm);
         var matchRules;
 
         // Check for reductions on inputs.
         for (var i in workExpr.inputs) {
-            workExpr.inputs[i] = workExpr.inputs[i].reduce();
+            workExpr.inputs[i] = workExpr.inputs[i].reduce(btm);
         }
-        matchRules = findMatchRules(this.btm.reduceRules, workExpr, true);
+        matchRules = findMatchRules(btm.reduceRules, workExpr, true);
         while (matchRules.length > 0) {
-            workExpr = this.btm.parse(matchRules[0].subStr, this.context);
-            matchRules = findMatchRules(this.btm.reduceRules, workExpr, true);
+            workExpr = btm.parse(matchRules[0].subStr, this.context);
+            matchRules = findMatchRules(btm.reduceRules, workExpr, true);
         }
         return workExpr;
     }
 
     
     derivative(ivar, varList) {
-        return(new scalar_expr(this.btm, 0));
+        return(new scalar_expr(0));
     }
 
     /*
