@@ -18,8 +18,8 @@ import { rational_number } from "./rational_number.js"
 import { exprType } from "./BTM_root.js"
 
 export class scalar_expr extends expression {
-    constructor(number) {
-        super();
+    constructor(menv, number) {
+        super(menv);
         this.type = exprType.number;
         if (typeof number === "number" ||
                 number instanceof Number) {
@@ -78,11 +78,11 @@ export class scalar_expr extends expression {
     }
     
     // Combine constants where possible
-    simplifyConstants(btm) {
+    simplifyConstants() {
         var retValue;
-        if (!btm.options.negativeNumbers && this.number.p < 0) {
+        if (!this.menv.options.negativeNumbers && this.number.p < 0) {
             var theNumber = this.number.multiply(-1);
-            retValue = new unop_expr('-', new scalar_expr(theNumber));
+            retValue = new unop_expr(this.menv, '-', new scalar_expr(this.menv, theNumber));
         } else {
             retValue = this;
         }
@@ -93,20 +93,20 @@ export class scalar_expr extends expression {
         return(this.number.value());
     }
 
-    evaluate(btm, bindings) {
+    evaluate(bindings) {
         return(this.value());
     }
     
     copy() {
-        return(new scalar_expr(this.number));
+        return(new scalar_expr(this.menv, this.number));
     }
     
     compose(bindings) {
-        return(new scalar_expr(this.number));
+        return(new scalar_expr(this.menv, this.number));
     }
     
     derivative(ivar, varList) {
-        return(new scalar_expr(0));
+        return(new scalar_expr(this.menv, 0));
     }
     
     /*

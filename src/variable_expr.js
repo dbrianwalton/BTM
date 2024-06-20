@@ -16,8 +16,8 @@ import { scalar_expr } from "./scalar_expr.js"
 import { exprType, exprValue } from "./BTM_root.js"
 
 export class variable_expr extends expression {
-    constructor(name) {
-        super();
+    constructor(menv, name) {
+        super(menv);
         this.type = exprType.variable;
         this.name = name;
 
@@ -134,7 +134,7 @@ export class variable_expr extends expression {
         return(this.isConst);
     }
 
-    evaluate(btm, bindings) {
+    evaluate(bindings) {
         var retVal;
 
         if (bindings[this.name] == undefined) {
@@ -167,14 +167,14 @@ export class variable_expr extends expression {
     }
 
     copy() {
-        return(new variable_expr(this.name));
+        return(new variable_expr(this.menv, this.name));
     }
 
     compose(bindings) {
         var retVal;
 
         if (bindings[this.name] == undefined) {
-            retVal = new variable_expr(this.name);
+            retVal = new variable_expr(this.menv, this.name);
         } else {
             retVal = bindings[this.name];
         }
@@ -187,15 +187,15 @@ export class variable_expr extends expression {
         var ivarName = (typeof ivar == 'string') ? ivar : ivar.name;
 
         if (this.name === ivarName) {
-            retVal = new scalar_expr(1);
+            retVal = new scalar_expr(this.menv, 1);
 
         // If either a constant or another independent variable, deriv=0
         } else if (this.isConst || varList && varList[this.name] != undefined) {
-            retVal = new scalar_expr(0);
+            retVal = new scalar_expr(this.menv, 0);
 
         // Presuming other variables are dependent variables.
         } else  {
-            retVal = new variable_expr(this.name+"'");
+            retVal = new variable_expr(this.menv, this.name+"'");
         }
         return(retVal);
     }
@@ -287,7 +287,7 @@ export class index_expr {
         return(depArray);
     }
 
-    evaluate(btm, bindings) {
+    evaluate(bindings) {
         var retVal;
 
         if (bindings[this.boundName] == undefined) {
@@ -301,7 +301,7 @@ export class index_expr {
             if (this.k != undefined) {
                 tmpBind[this.k] = bindings["row"];
             }
-            var i = this.index.evaluate(btm, tmpBind)-1;
+            var i = this.index.evaluate(tmpBind)-1;
             if (i >= 0 && i<bindings[this.boundName].length) {
                 retVal = bindings[this.boundName][i];
             }

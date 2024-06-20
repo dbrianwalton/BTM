@@ -12,20 +12,20 @@
 * Define the Binary Expression -- defined by an operator and two inputs.
 * *************************************************** */
 
-import { BTM, opPrec, exprType, exprValue } from "./BTM_root.js"
+import { MENV, opPrec, exprType, exprValue } from "./BTM_root.js"
 import { expression } from "./expression.js"
 import { scalar_expr } from "./scalar_expr.js"
 import { unop_expr } from "./unop_expr.js"
 
 export class binop_expr extends expression {
-    constructor(op, inputA, inputB) {
-        super();
+    constructor(menv, op, inputA, inputB) {
+        super(menv);
         this.type = exprType.binop;
         this.op = op;
         if (typeof inputA == 'undefined')
-            inputA = new expression();
+            inputA = new expression(this.menv);
         if (typeof inputB == 'undefined')
-            inputB = new expression();
+            inputB = new expression(this.menv);
         this.inputs = [inputA, inputB];
             inputA.parent = this;
             inputB.parent = this;
@@ -320,9 +320,9 @@ export class binop_expr extends expression {
         return(commutes);
     }
 
-    evaluate(btm, bindings) {
-        var inputAVal = this.inputs[0].evaluate(btm, bindings);
-        var inputBVal = this.inputs[1].evaluate(btm, bindings);
+    evaluate(bindings) {
+        var inputAVal = this.inputs[0].evaluate(bindings);
+        var inputBVal = this.inputs[1].evaluate(bindings);
 
         if (inputAVal == undefined || inputBVal == undefined) {
             return(undefined);
@@ -354,7 +354,7 @@ export class binop_expr extends expression {
                 }
                 break;
             case '=':
-                retVal = (Math.abs(inputAVal - inputBVal) < this.btm.options.absTol);
+                retVal = (Math.abs(inputAVal - inputBVal) < this.menv.options.absTol);
                 break;
             case '&':
                 retVal = inputAVal && inputBVal;
@@ -373,16 +373,16 @@ export class binop_expr extends expression {
 
     // See if this operator is now redundant.
     // Return the resulting expression.
-    reduce(btm) {
+    reduce() {
         var newExpr = this;
         if (this.inputs.length <= 1) {
             if (this.inputs.length == 0) {
                 // Sum with no elements = 0
                 // Product with no elements = 1
-                newExpr = new scalar_expr(this.op == '+' ? 0 : 1);
+                newExpr = new scalar_expr(this.menv, this.op == '+' ? 0 : 1);
             } else {
                 // Sum or product with one element *is* that element.
-                newExpr = this.inputs[0].reduce(btm);
+                newExpr = this.inputs[0].reduce();
             }
             newExpr.parent = this.parent;
             if (this.parent !== null) {
@@ -392,11 +392,11 @@ export class binop_expr extends expression {
         return(newExpr);
     }
 
-    simplifyConstants(btm) {
+    simplifyConstants() {
         var retVal = this;
-        this.inputs[0] = this.inputs[0].simplifyConstants(btm);
+        this.inputs[0] = this.inputs[0].simplifyConstants();
         this.inputs[0].parent = this;
-        this.inputs[1] = this.inputs[1].simplifyConstants(btm);
+        this.inputs[1] = this.inputs[1].simplifyConstants();
         this.inputs[1].parent = this;
         if ((this.inputs[0].type == exprType.number
                 || (this.inputs[0].type == exprType.unop && this.inputs[0].inputs[0].type == exprType.number)
@@ -452,10 +452,10 @@ export class binop_expr extends expression {
                     break;
             }
             if (theNumber !== undefined) {
-                if (!this.btm.options.negativeNumbers && theNumber.p < 0) {
-                    retVal = new unop_expr('-', new scalar_expr(theNumber.multiply(-1)));
+                if (!this.menv.options.negativeNumbers && theNumber.p < 0) {
+                    retVal = new unop_expr(this.menv, '-', new scalar_expr(this.menv, theNumber.multiply(-1)));
                 } else {
-                    retVal = new scalar_expr(theNumber);
+                    retVal = new scalar_expr(this.menv, theNumber);
                 }
             }
         } else {
@@ -476,7 +476,7 @@ export class binop_expr extends expression {
                     // Simplify 0-a
                     if (this.inputs[0].type == exprType.number
                             && this.inputs[0].number.value()==0) {
-                        retVal = new unop_expr("-", this.inputs[1]);
+                        retVal = new unop_expr(this.menv, "-", this.inputs[1]);
                     }
                     // Simplify a-0
                     else if (this.inputs[1].type == exprType.number
@@ -500,7 +500,7 @@ export class binop_expr extends expression {
                     // Simplify 1/a to unary operator of multiplicative inverse.
                     if (this.inputs[0].type == exprType.number
                             && this.inputs[0].number.value()==1) {
-                        retVal = new unop_expr("/", this.inputs[1]);
+                        retVal = new unop_expr(this.menv, "/", this.inputs[1]);
                     }
                     // Simplify a/1
                     else if (this.inputs[1].type == exprType.number
@@ -512,12 +512,12 @@ export class binop_expr extends expression {
                     // Simplify 0^p
                     if (this.inputs[0].type == exprType.number
                             && this.inputs[0].number.value()==0) {
-                        retVal = new scalar_expr(0);
+                        retVal = new scalar_expr(this.menv, 0);
                     }
                     // Simplify 1^p
                     else if (this.inputs[0].type == exprType.number
                             && this.inputs[0].number.value() == 1) {
-                        retVal = new scalar_expr(1);
+                        retVal = new scalar_expr(this.menv, 1);
                     }
                     // Simplify p^1
                     else if (this.inputs[1].type == exprType.number
@@ -563,16 +563,16 @@ export class binop_expr extends expression {
                         {
                             var newInput = inB.flatten();
                             for (var i in newInput.inputs) {
-                                inputs.push(new unop_expr('-',newInput.inputs[i]));
+                                inputs.push(new unop_expr(this.menv, '-',newInput.inputs[i]));
                             }
                         } else {
-                            inputs.push(new unop_expr('-',inB));
+                            inputs.push(new unop_expr(this.menv, '-',inB));
                         }
                     } else {
                         inputs.push(inB);
                     }
                 }
-                retVal = new multiop_expr('+', inputs);
+                retVal = new multiop_expr(this.menv, '+', inputs);
                 break;
             case '*':
             case '/':
@@ -601,19 +601,19 @@ export class binop_expr extends expression {
                         {
                             var newInput = inB.flatten();
                             for (var i in newInput.inputs) {
-                                inputs.push(new unop_expr('/',newInput.inputs[i]));
+                                inputs.push(new unop_expr(this.menv, '/',newInput.inputs[i]));
                             }
                         } else {
-                            inputs.push(new unop_expr('/',inB));
+                            inputs.push(new unop_expr(this.menv, '/',inB));
                         }
                     } else {
                         inputs.push(inB);
                     }
                 }
-                retVal = new multiop_expr('*', inputs);
+                retVal = new multiop_expr(this.menv, '*', inputs);
                 break;
             default:
-                retVal = new binop_expr(this.op, inA, inB);
+                retVal = new binop_expr(this.menv, this.op, inA, inB);
         }
         return(retVal);
     }
@@ -621,7 +621,7 @@ export class binop_expr extends expression {
     copy() {
       var inA = this.inputs[0].copy();
       var inB = this.inputs[1].copy();
-      return (new binop_expr(this.op, inA, inB));
+      return (new binop_expr(this.menv, this.op, inA, inB));
     }
 
     compose(bindings) {
@@ -629,20 +629,20 @@ export class binop_expr extends expression {
         var inB = this.inputs[1].compose(bindings);
 
         var retVal;
-        retVal = new binop_expr(this.op, inA, inB);
+        retVal = new binop_expr(this.menv, this.op, inA, inB);
         if (inA.type == exprType.number && inB.type == exprType.number) {
             switch (this.op) {
                 case '+':
-                    retVal = new scalar_expr(inA.number.add(inB.number));
+                    retVal = new scalar_expr(this.menv, inA.number.add(inB.number));
                     break;
                 case '-':
-                    retVal = new scalar_expr(inA.number.subtract(inB.number));
+                    retVal = new scalar_expr(this.menv, inA.number.subtract(inB.number));
                     break;
                 case '*':
-                    retVal = new scalar_expr(inA.number.multiply(inB.number));
+                    retVal = new scalar_expr(this.menv, inA.number.multiply(inB.number));
                     break;
                 case '/':
-                    retVal = new scalar_expr(inA.number.divide(inB.number));
+                    retVal = new scalar_expr(this.menv, inA.number.divide(inB.number));
                     break;
             }
         }
@@ -655,51 +655,51 @@ export class binop_expr extends expression {
 
         var theDeriv;
         if (uConst && vConst) {
-            theDeriv = new scalar_expr(0);
+            theDeriv = new scalar_expr(this.menv, 0);
         } else {
             var dudx, dvdx;
 
             if (uConst) {
-                dudx = new scalar_expr(0);
+                dudx = new scalar_expr(this.menv, 0);
             } else {
                 dudx = this.inputs[0].derivative(ivar, varList);
             }
             if (vConst) {
-                dvdx = new scalar_expr(0);
+                dvdx = new scalar_expr(this.menv, 0);
             } else {
                 dvdx = this.inputs[1].derivative(ivar, varList);
             }
             switch (this.op) {
                 case '+':
-                    theDeriv = new binop_expr('+', dudx, dvdx);
+                    theDeriv = new binop_expr(this.menv, '+', dudx, dvdx);
                     break;
                 case '-':
-                    theDeriv = new binop_expr('-', dudx, dvdx);
+                    theDeriv = new binop_expr(this.menv, '-', dudx, dvdx);
                     break;
                 case '*':
-                    var udv = new binop_expr('*', this.inputs[0], dvdx)
-                    var vdu = new binop_expr('*', dudx, this.inputs[1])
+                    var udv = new binop_expr(this.menv, '*', this.inputs[0], dvdx)
+                    var vdu = new binop_expr(this.menv, '*', dudx, this.inputs[1])
                     if (uConst) {
                         theDeriv = udv;
                     } else if (vConst) {
                         theDeriv = vdu;
                     } else {
-                        theDeriv = new binop_expr('+', vdu, udv);
+                        theDeriv = new binop_expr(this.menv, '+', vdu, udv);
                     }
                     break;
                 case '/':
                     if (vConst) {
-                        theDeriv = new binop_expr('/', dudx, this.inputs[1]);
+                        theDeriv = new binop_expr(this.menv, '/', dudx, this.inputs[1]);
                     } else if (uConst) {
-                        var numer = new unop_expr('-', new binop_expr('*', this.inputs[0], dvdx));
-                        var denom = new binop_expr('^', this.inputs[1], new scalar_expr(2));
-                        theDeriv = new binop_expr('/', numer, denom);
+                        var numer = new unop_expr(this.menv, '-', new binop_expr(this.menv, '*', this.inputs[0], dvdx));
+                        var denom = new binop_expr(this.menv, '^', this.inputs[1], new scalar_expr(this.menv, 2));
+                        theDeriv = new binop_expr(this.menv, '/', numer, denom);
                     } else {
-                        var udv = new binop_expr('*', this.inputs[0], dvdx)
-                        var vdu = new binop_expr('*', dudx, this.inputs[1])
-                        var numer = new binop_expr('-', vdu, udv);
-                        var denom = new binop_expr('^', this.inputs[1], new scalar_expr(2));
-                        theDeriv = new binop_expr('/', numer, denom);
+                        var udv = new binop_expr(this.menv, '*', this.inputs[0], dvdx)
+                        var vdu = new binop_expr(this.menv, '*', dudx, this.inputs[1])
+                        var numer = new binop_expr(this.menv, '-', vdu, udv);
+                        var denom = new binop_expr(this.menv, '^', this.inputs[1], new scalar_expr(this.menv, 2));
+                        theDeriv = new binop_expr(this.menv, '/', numer, denom);
                     }
                     break;
                 case '^':
@@ -707,22 +707,22 @@ export class binop_expr extends expression {
                     var ivarName = (typeof ivar == 'string') ? ivar : ivar.name;
                     // See if the power depends on the variable
                     if (powDep.length > 0 && powDep.indexOf(ivarName) >= 0) {
-                        var theArg = new binop_expr('*', this.inputs[1], new function_expr('log', this.inputs[0]));
-                        var theFcn = new function_expr('exp', theArg);
+                        var theArg = new binop_expr(this.menv, '*', this.inputs[1], new function_expr(this.menv, 'log', this.inputs[0]));
+                        var theFcn = new function_expr(this.menv, 'exp', theArg);
                         theDeriv = theFcn.derivative(ivar, varList);
                     // Otherwise this is a simple application of the power rule
                     } else if (!uConst) {
-                        var newPow = new binop_expr('-', this.inputs[1], new scalar_expr(1));
-                        var dydu = new binop_expr('*', this.inputs[1], new binop_expr('^', this.inputs[0], newPow));
+                        var newPow = new binop_expr(this.menv, '-', this.inputs[1], new scalar_expr(this.menv, 1));
+                        var dydu = new binop_expr(this.menv, '*', this.inputs[1], new binop_expr(this.menv, '^', this.inputs[0], newPow));
                         if (this.inputs[0].type == exprType.variable
                                 && this.inputs[0].name == ivarName) {
                             theDeriv = dydu;
                         } else {
                             var dudx = this.inputs[0].derivative(ivar, varList);
-                            theDeriv = new binop_expr('*', dydu, dudx);
+                            theDeriv = new binop_expr(this.menv, '*', dydu, dudx);
                         }
                     } else {
-                        theDeriv = new scalar_expr(0);
+                        theDeriv = new scalar_expr(this.menv, 0);
                     }
                     break;
                 default:

@@ -52,7 +52,8 @@ export function toTeX(expr) {
     return typeof expr.toTeX === "function" ? expr.toTeX() : expr;
 }
 
-export class BTM {
+// Class to define parsing and reduction rules.
+export class MENV {
     constructor(settings) {
         if (settings === undefined) {
             settings = {};
@@ -61,12 +62,7 @@ export class BTM {
         // Each instance of BTM environment needs bindings across all expressions.
         this.randomBindings = {};
         this.bindings = {};
-        this.data = {};
-        this.data.allValues = {};
-        this.data.params = {};
-        this.data.variables = {};
-        this.data.expressions = {};
-        this.data.functions = {};
+        this.functions = {};
         this.opPrec = opPrec;
         this.exprType = exprType;
         this.exprValue = exprValue;
@@ -168,23 +164,6 @@ export class BTM {
         return findMatchRules(reductionList, testExpr, doValidate);
     }
 
-    addMathObject(name, context, newObject) {
-        switch(context) {
-            case 'number':
-                if (newObject.isConstant()) {
-                    this.data.params[name] = newObject;
-                    this.data.allValues[name] = newObject;
-                } else {
-                    throw `Attempt to add math object '${name}' with context '${context}' that does not match.`;
-                }
-                break;
-            case 'formula':
-                this.data.allValues[name] = newObject;
-                break;
-        }
-        return newObject;
-    }
-
     generateRandom(distr, options) {
         var rndVal, rndScalar;
 
@@ -208,114 +187,8 @@ export class BTM {
                 } while (options.nonzero && Math.abs(rndVal) < this.options.absTol);
                 break;
         }
-        rndScalar = new scalar_expr(rndVal);
+        rndScalar = new scalar_expr(this, rndVal);
         return rndScalar;
-    }
-
-    addParameter(name, options) {
-        var newParam;
-        let prec = options.prec;
-        if (options.mode === 'random') {
-            let distr = options.distr;
-            if (typeof distr === 'undefined') {
-                distr = 'discrete_range';
-            }
-            switch (distr) {
-                case 'discrete_range':
-                    let min = options.min;
-                    if (typeof min.value === 'function') {
-                        min = min.value();
-                    }
-                    let max = options.max;
-                    if (typeof max.value === 'function') {
-                        max = max.value();
-                    }
-                    let by = options.by;
-                    if (typeof by.value === 'function') {
-                        by = by.value();
-                    }
-                    let Nvals = Math.floor((max-min) / by)+1;
-                    do {
-                        newParam = min + by * this.rng.randInt(0,Nvals-1);
-                    } while (options.nonzero && Math.abs(newParam) < this.options.absTol);
-                    break;
-            }
-        } else if (options.mode == 'calculate') {
-            newParam = this.parse(options.formula, "formula").evaluate(this, this.data.params);
-        } else if (options.mode == 'rational') {
-            newParam = this.parse(new rational_number(options.numer,options.denom).toString(), "number");
-        } else if (options.mode == 'static') {
-            newParam = options.value;
-        }
-        if (typeof prec === 'number') {
-            newParam = Math.round(newParam/prec) / Math.round(1/prec);
-        }
-        this.data.params[name] = newParam;
-        this.data.allValues[name] = newParam;
-
-        return newParam;
-    }
-
-    addVariable(name, options) {
-        var newVar = new variable_expr(name);
-        
-        this.data.variables[name] = newVar;
-        this.data.allValues[name] = newVar;
-
-        return newVar;
-    }
-
-    evaluateMathObject(mathObject, context, bindings) {
-        var theExpr, newExpr, retValue;
-        // Not yet parsed
-        if (typeof mathObject === 'string') {
-            var formula = this.decodeFormula(mathObject);
-            theExpr = this.parse(formula, "formula");
-        // Already parsed
-        } else if (typeof mathObject === 'object') {
-            theExpr = mathObject;
-        }
-        retValue = theExpr.evaluate(this, bindings);
-        newExpr = new scalar_expr(retValue);
-        return newExpr;
-    }
-
-    parseExpression(expression, context) {
-        var newExpr;
-        // Not yet parsed
-        if (typeof expression === 'string') {
-            var formula = this.decodeFormula(expression);
-            newExpr = this.parse(formula, context);
-        // Already parsed
-        } else if (typeof expression === 'object') {
-            newExpr = expression;
-        }
-        return newExpr;
-    }
-
-    composeExpression(expression, substitution) {
-        var myExpr = expression;
-        var mySubs = Object.entries(substitution);
-        var substVar, substExpr;
-        [substVar, substExpr] = mySubs[0];
-        if (typeof myExpr == "string") {
-            myExpr = this.parse(myExpr, "formula");
-        }
-        if (typeof substExpr == "string") {
-            substExpr = this.parse(substExpr, "formula");
-        }
-        var binding = {};
-        binding[substVar] = substExpr;
-        return myExpr.compose(binding);
-    }
-
-    addExpression(name, expression) {
-        var newExpr = this.parseExpression(expression, "formula");
-        
-        this.data.expressions[name] = newExpr;
-        this.data.allValues[name] = newExpr;
-
-        return newExpr;
     }
 
     addFunction(name, input, expression) {
@@ -324,13 +197,13 @@ export class BTM {
         }
         // No expression? Make it random.
         if (arguments.length < 3) {
-            var formula = new scalar_expr(this.rng.randRational([-20,20],[1,15]));
+            var formula = new scalar_expr(this, this.rng.randRational([-20,20],[1,15]));
             var newTerm;
             for (var i=1; i<=6; i++) {
                 if (Array.isArray(input)) {
                     newTerm = this.parse("sin("+i+"*"+input[0]+")", "formula");
                     for (var j=1; j<input.length; j++) {
-                        newTerm = new binop_expr("*",
+                        newTerm = new binop_expr(this, "*",
                             this.parse("sin("+i+"*"+input[j]+")", "formula"),
                             newTerm
                         );
@@ -338,10 +211,10 @@ export class BTM {
                 } else {
                     newTerm = this.parse("sin("+i+"*"+input+")", "formula");
                 }
-                newTerm = new binop_expr("*",
-                                new scalar_expr(this.rng.randRational([-20,20],[1,10])),
+                newTerm = new binop_expr(this, "*",
+                                new scalar_expr(this, this.rng.randRational([-20,20],[1,10])),
                                 newTerm);
-                formula = new binop_expr("+", formula, newTerm);
+                formula = new binop_expr(this, "+", formula, newTerm);
             }
             expression = formula;
         }
@@ -351,47 +224,14 @@ export class BTM {
         this.functions[name] = functionEntry;
     }
 
-    // This routine takes the text and looks for strings in mustaches {{name}}
-    // It replaces this element with the corresponding parameter, variable, or expression.
-    // These should have been previously parsed and stored in this.data.
-    decodeFormula(statement, displayMode) {
-        // First find all of the expected substitutions.
-        var substRequestList = {};
-        var matchRE = /\{\{[A-Za-z]\w*\}\}/g;
-        var substMatches = statement.match(matchRE);
-        if (substMatches != null) {
-            for (var i=0; i<substMatches.length; i++) {
-                var matchName = substMatches[i];
-                matchName = matchName.substr(2,matchName.length-4);
-                // Now see if the name is in our substitution rules.
-                if (this.data.allValues[matchName] != undefined) {
-                    if (displayMode != undefined && displayMode) {
-                        substRequestList[matchName] = '{'+this.data.allValues[matchName].toTeX()+'}';
-                    } else {
-                        substRequestList[matchName] = '('+this.data.allValues[matchName].toString()+')';
-                    }
-                }
-            }
-        }
-
-        // We are now ready to make the substitutions.
-        var retString = statement;
-        for (var match in substRequestList) {
-            var re = new RegExp("{{" + match + "}}", "g");
-            var subst = substRequestList[match];
-            retString = retString.replace(re, subst);
-        }
-        return retString;
-    }
-
-    compareExpressions(expr1, expr2) {
+    compareMathObjects(expr1, expr2) {
         if (typeof expr1 === 'string') {
             expr1 = this.parse(expr1, "formula")
         }
         if (typeof expr2 === 'string') {
             expr2 = this.parse(expr2, "formula")
         }
-        return (expr1.compare(this, expr2));
+        return (expr1.compare(expr2));
     }
 
     getParser(context) {
@@ -401,7 +241,7 @@ export class BTM {
     }
  
   /* ****************************************
-    btm.parse() is the workhorse.
+    parse() is the workhorse.
 
       Take a string representing a formula, and decompose it into an appropriate
       tree structure suitable for recursive evaluation of the function.
@@ -455,7 +295,7 @@ export class BTM {
     // and see if we need to apply the operators to some operands.
     // This is based on operator precedence (order of operations).
     // An empty newOp means to finish resolve the rest of the stacks.
-    function resolveOperator(btm, operatorStack, operandStack, newOp) {
+    function resolveOperator(menv, operatorStack, operandStack, newOp) {
       // Test if the operator has lower precedence.
       var oldOp = 0;
       while (operatorStack.length > 0) {
@@ -475,13 +315,13 @@ export class BTM {
             var input = operandStack.pop();
 
             // Deal with negative numbers separately.
-            if (btm.options.negativeNumbers && input.type == exprType.number && oldOp.op == '-') {
-              newExpr = new scalar_expr(input.number.multiply(-1));
+            if (menv.options.negativeNumbers && input.type == exprType.number && oldOp.op == '-') {
+              newExpr = new scalar_expr(menv, input.number.multiply(-1));
             } else {
-              newExpr = new unop_expr(oldOp.op, input);
+              newExpr = new unop_expr(menv, oldOp.op, input);
             }
           } else {
-            newExpr = new expression();
+            newExpr = new expression(menv);
             newExpr.setParsingError("Incomplete formula: missing value for " + oldOp.op);
           }
         // Binary: Will be *two* operands.
@@ -489,9 +329,9 @@ export class BTM {
           if (operandStack.length > 1) {
             var inputB = operandStack.pop();
             var inputA = operandStack.pop();
-            newExpr = new binop_expr(oldOp.op, inputA, inputB);
+            newExpr = new binop_expr(menv, oldOp.op, inputA, inputB);
           } else {
-            newExpr = new expression();
+            newExpr = new expression(menv);
             newExpr.setParsingError("Incomplete formula: missing value for " + oldOp.op);
           }
         }
@@ -542,7 +382,7 @@ export class BTM {
         endPos = completeAbsValue(workingStr, charPos);
         var subExprStr = workingStr.slice(charPos+1,endPos);
         var subExpr = this.parse(subExprStr, context, bindings);
-        var newExpr = new function_expr('abs', subExpr);
+        var newExpr = new function_expr(this, 'abs', subExpr);
         operandStack.push(newExpr);
         newElement = 0;
         charPos = endPos;
@@ -550,7 +390,7 @@ export class BTM {
       // It could be a number. Just read it off
       } else if (workingStr.substr(charPos).search(numberMatch) == 0) {
         endPos = completeNumber(workingStr, charPos, options);
-        var newExpr = new scalar_expr(new Number(workingStr.slice(charPos, endPos)));
+        var newExpr = new scalar_expr(this, new Number(workingStr.slice(charPos, endPos)));
         if (options && options.noDecimals && workingStr.charAt(charPos) == '.') {
           newExpr.setParsingError("Whole numbers only. No decimal values are allowed.")
         }
@@ -583,18 +423,18 @@ export class BTM {
             var entries = workingStr.slice(endPos+1,endParen).split(",");
             expr = this.parse(entries[0], context, bindings);
             if (entries.length == 1) {
-              newExpr = new deriv_expr(expr, 'x');
+              newExpr = new deriv_expr(this, expr, 'x');
             } else {
               ivar = this.parse(entries[1], context, bindings);
               // D(f(x),x,c) means f'(c)
               if (entries.length > 2) {
                 ivarValue = this.parse(entries[2], context, bindings);
               }
-              newExpr = new deriv_expr(expr, ivar, ivarValue);
+              newExpr = new deriv_expr(this, expr, ivar, ivarValue);
             }
           } else {
             var subExpr = this.parse(workingStr.slice(endPos+1,endParen), context, bindings);
-            newExpr = new function_expr(theName, subExpr);
+            newExpr = new function_expr(this, theName, subExpr);
           }
           operandStack.push(newExpr);
           newElement = 0;
@@ -613,7 +453,7 @@ export class BTM {
               endParen = endPos+1;
             }
             var indexExpr = this.parse(workingStr.slice(endPos+1,endParen), context, bindings);
-            var newExpr = new index_expr(theName, indexExpr);
+            var newExpr = new index_expr(this, theName, indexExpr);
             if (hasError) {
               newExpr.setParsingError(parseError);
               parseError = "";
@@ -622,7 +462,7 @@ export class BTM {
             newElement = 0;
             charPos = endParen;
           } else {
-            var newExpr = new variable_expr(theName);
+            var newExpr = new variable_expr(this, theName);
             operandStack.push(newExpr);
             newElement = 0;
             charPos = endPos-1;
@@ -674,7 +514,7 @@ export class BTM {
                 if (!finalExpression.isConstant()) {
                     //throw "The expression should be a constant but depends on variables."
                 }
-                finalExpression = new scalar_expr(finalExpression.value());
+                finalExpression = new scalar_expr(this, finalExpression.value());
                 break;
             case 'formula':
                 break;
@@ -737,95 +577,97 @@ function operator(opStr) {
   }
 }
 
+
+
 /* An absolute value can be complicated because also a function. 
 May not be clear if nested: |2|x-3|- 5|.
 Is that 2x-15 or abs(2|x-3|-5)?
 Resolve by requiring explicit operations: |2*|x-3|-5| or |2|*x-3*|-5|
 */
 function completeAbsValue(formulaStr, startPos) {
-  var pLevel = 1;
-  var charPos = startPos;
-  var wasOp = true; // open absolute value implicitly has previous operation.
+    var pLevel = 1;
+    var charPos = startPos;
+    var wasOp = true; // open absolute value implicitly has previous operation.
 
-  while (pLevel > 0 && charPos < formulaStr.length) {
-    charPos++;
-    // We encounter another absolute value.
-    if (formulaStr.charAt(charPos) == '|') {
-      if (wasOp) { // Must be opening a new absolute value.
-        pLevel++;
-        // wasOp is still true since can't close immediately
-      } else {  // Assume closing absolute value. If not wanted, need operator.
-        pLevel--;
-        // wasOp is still false since just closed a value.
-      }
-    // Keep track of whether just had operator or not.
-    } else if ("+-*/([".search(formulaStr.charAt(charPos)) >= 0) {
-      wasOp = true;
-    } else if (formulaStr.charAt(charPos) != ' ') {
-      wasOp = false;
+    while (pLevel > 0 && charPos < formulaStr.length) {
+        charPos++;
+        // We encounter another absolute value.
+        if (formulaStr.charAt(charPos) == '|') {
+            if (wasOp) { // Must be opening a new absolute value.
+                pLevel++;
+                // wasOp is still true since can't close immediately
+            } else {  // Assume closing absolute value. If not wanted, need operator.
+                pLevel--;
+                // wasOp is still false since just closed a value.
+            }
+        // Keep track of whether just had operator or not.
+        } else if ("+-*/([".search(formulaStr.charAt(charPos)) >= 0) {
+            wasOp = true;
+        } else if (formulaStr.charAt(charPos) != ' ') {
+            wasOp = false;
+        }
     }
-  }
-  return(charPos);
+    return(charPos);
 }
 
 // Find the balancing closing parenthesis.
 function completeParenthesis(formulaStr, startPos) {
-  var pLevel = 1;
-  var charPos = startPos;
+    var pLevel = 1;
+    var charPos = startPos;
 
-  while (pLevel > 0 && charPos < formulaStr.length) {
-    charPos++;
-    if (formulaStr.charAt(charPos) == ')') {
-      pLevel--;
-    } else if (formulaStr.charAt(charPos) == '(') {
-      pLevel++;
+    while (pLevel > 0 && charPos < formulaStr.length) {
+        charPos++;
+        if (formulaStr.charAt(charPos) == ')') {
+            pLevel--;
+        } else if (formulaStr.charAt(charPos) == '(') {
+            pLevel++;
+        }
     }
-  }
-  return(charPos);
+    return(charPos);
 }
 
 // Brackets are used for sequence indexing, not regular grouping.
 function completeBracket(formulaStr, startPos, asSubscript) {
-  var pLevel = 1;
-  var charPos = startPos;
-  var fail = false;
+    var pLevel = 1;
+    var charPos = startPos;
+    var fail = false;
 
-  while (pLevel > 0 && charPos < formulaStr.length) {
-    charPos++;
-    if (formulaStr.charAt(charPos) == ']') {
-        pLevel--;
-    } else if (formulaStr.charAt(charPos) == '[') {
-        if (asSubscript) {
-          fail = true;
+    while (pLevel > 0 && charPos < formulaStr.length) {
+        charPos++;
+        if (formulaStr.charAt(charPos) == ']') {
+            pLevel--;
+        } else if (formulaStr.charAt(charPos) == '[') {
+            if (asSubscript) {
+                fail = true;
+            }
+            pLevel++;
         }
-        pLevel++;
     }
-  }
-  if (asSubscript && fail) {
-    throw "Nested brackets used for subscripts are not supported.";
-  }
-  return(charPos);
+    if (asSubscript && fail) {
+        throw "Nested brackets used for subscripts are not supported.";
+    }
+    return(charPos);
 }
 
 /* Given a string and a starting position of a name, identify the entire name. */
 /* Require start with letter, then any sequence of *word* character */
 /* Also allow primes for derivatives at the end. */
 function completeName(formulaStr, startPos) {
-  var matchRule = /[A-Za-z]\w*'*/;
-  var match = formulaStr.substr(startPos).match(matchRule);
-  return(startPos + match[0].length);
+    var matchRule = /[A-Za-z]\w*'*/;
+    var match = formulaStr.substr(startPos).match(matchRule);
+    return(startPos + match[0].length);
 }
 
 /* Given a string and a starting position of a number, identify the entire number. */
 function completeNumber(formulaStr, startPos, options) {
-  var matchRule;
-  if (options && options.noDecimals) {
-    matchRule = /[0-9]*/;
-  } else {
-    matchRule = /[0-9]*(\.[0-9]*)?(e-?[0-9]+)?/;
-  }
-  var match = formulaStr.substr(startPos).match(matchRule);
-  return(startPos + match[0].length);
+    var matchRule;
+    if (options && options.noDecimals) {
+        matchRule = /[0-9]*/;
+    } else {
+        matchRule = /[0-9]*(\.[0-9]*)?(e-?[0-9]+)?/;
+    }
+    var match = formulaStr.substr(startPos).match(matchRule);
+    return(startPos + match[0].length);
 }
 
 /* Tests a string to see if it can be constructed as a concatentation of known names. */
@@ -833,30 +675,194 @@ function completeNumber(formulaStr, startPos, options) {
 /* Pass in the bindings giving the known names and see if we can build this name */
 /* Return the *first* name that is part of the whole. */
 function TestNameIsComposite(text, bindings) {
-  var retStruct = new Object();
-  retStruct.isComposite = false;
+    var retStruct = new Object();
+    retStruct.isComposite = false;
 
-  if (bindings !== undefined) {
-    var remain, nextName;
-    if (bindings[text] !== undefined) {
-      retStruct.isComposite = true;
-      retStruct.name = text;
-    } else {
-      // See if the text *starts* with a known name
-      var knownNames = Object.keys(bindings);
-      for (var ikey in knownNames) {
-        nextName = knownNames[ikey];
-        // If *this* name is the start of the text, see if the rest from known names.
-        if (text.search(nextName)==0) {
-          remain = TestNameIsComposite(text.slice(nextName.length), bindings);
-          if (remain.isComposite) {
+    if (bindings !== undefined) {
+        var remain, nextName;
+        if (bindings[text] !== undefined) {
             retStruct.isComposite = true;
-            retStruct.name = nextName;
-            break;
-          }
+            retStruct.name = text;
+        } else {
+            // See if the text *starts* with a known name
+            var knownNames = Object.keys(bindings);
+            for (var ikey in knownNames) {
+                nextName = knownNames[ikey];
+                // If *this* name is the start of the text, see if the rest from known names.
+                if (text.search(nextName)==0) {
+                    remain = TestNameIsComposite(text.slice(nextName.length), bindings);
+                    if (remain.isComposite) {
+                        retStruct.isComposite = true;
+                        retStruct.name = nextName;
+                        break;
+                    }
+                }
+            }
         }
-      }
     }
-  }
-  return retStruct;
+    return retStruct;
+}
+  
+export class BTM {
+    constructor(settings) {
+        this.menv = new MENV(settings);
+
+        // Each instance of BTM environment needs bindings across all expressions.
+        this.data = {};
+        this.data.allValues = {};
+        this.data.params = {};
+        this.data.variables = {};
+        this.data.expressions = {};
+    }
+
+
+    addMathObject(name, context, newObject) {
+        switch(context) {
+            case 'number':
+                if (newObject.isConstant()) {
+                    this.data.params[name] = newObject;
+                    this.data.allValues[name] = newObject;
+                } else {
+                    throw `Attempt to add math object '${name}' with context '${context}' that does not match.`;
+                }
+                break;
+            case 'formula':
+                this.data.allValues[name] = newObject;
+                break;
+        }
+        return newObject;
+    }
+
+    generateRandom(distr, options) {
+       return this.menv.generateRandom(distr,options);
+    }
+
+    addVariable(name, options) {
+        var newVar = new variable_expr(this.menv, name);
+        
+        this.data.variables[name] = newVar;
+        this.data.allValues[name] = newVar;
+
+        return newVar;
+    }
+
+    parseExpression(expression, context) {
+        var newExpr;
+        // Not yet parsed
+        if (typeof expression === 'string') {
+            var formula = this.decodeFormula(expression);
+            newExpr = this.menv.parse(formula, context);
+        // Already parsed
+        } else if (typeof expression === 'object') {
+            newExpr = expression;
+        }
+        return newExpr;
+    }
+
+    evaluateExpression(expression, context, bindings) {
+        var theExpr, newExpr, retValue;
+        // Not yet parsed
+        if (typeof expression === 'string') {
+            var formula = this.decodeFormula(expression);
+            theExpr = this.menv.parse(formula, "formula");
+        // Already parsed
+        } else if (typeof expression === 'object') {
+            theExpr = expression;
+        }
+        retValue = theExpr.evaluate(bindings);
+        newExpr = new scalar_expr(this.menv, retValue);
+        return newExpr;
+    }
+
+    composeExpression(expression, substitution) {
+        var myExpr;
+        // Not yet parsed
+        if (typeof expression === 'string') {
+            var formula = this.decodeFormula(expression);
+            myExpr = this.menv.parse(formula, "formula");
+        // Already parsed
+        } else if (typeof expression === 'object') {
+            myExpr = expression;
+        }
+        var mySubs = Object.entries(substitution);
+        var substVar, substExpr;
+        [substVar, substExpr] = mySubs[0];
+        if (typeof substExpr == "string") {
+            substExpr = this.menv.parse(substExpr, "formula");
+        }
+        var binding = {};
+        binding[substVar] = substExpr;
+        return myExpr.compose(binding);
+    }
+
+    addExpression(name, expression) {
+        var newExpr = this.parseExpression(expression, "formula");
+        
+        this.data.expressions[name] = newExpr;
+        this.data.allValues[name] = newExpr;
+
+        return newExpr;
+    }
+
+    addFunction(name, input, expression) {
+        this.menv.addFunction(name, input, expression);
+    }
+
+    // This routine takes the text and looks for strings in mustaches {{name}}
+    // It replaces this element with the corresponding parameter, variable, or expression.
+    // These should have been previously parsed and stored in this.data.
+    decodeFormula(statement, displayMode) {
+        // First find all of the expected substitutions.
+        var substRequestList = {};
+        var matchRE = /\{\{[A-Za-z]\w*\}\}/g;
+        var substMatches = statement.match(matchRE);
+        if (substMatches != null) {
+            for (var i=0; i<substMatches.length; i++) {
+                var matchName = substMatches[i];
+                matchName = matchName.substr(2,matchName.length-4);
+                // Now see if the name is in our substitution rules.
+                if (this.data.allValues[matchName] != undefined) {
+                    if (displayMode != undefined && displayMode) {
+                        substRequestList[matchName] = '{'+this.data.allValues[matchName].toTeX()+'}';
+                    } else {
+                        substRequestList[matchName] = '('+this.data.allValues[matchName].toString()+')';
+                    }
+                }
+            }
+        }
+
+        // We are now ready to make the substitutions.
+        var retString = statement;
+        for (var match in substRequestList) {
+            var re = new RegExp("{{" + match + "}}", "g");
+            var subst = substRequestList[match];
+            retString = retString.replace(re, subst);
+        }
+        return retString;
+    }
+
+    compareExpressions(expr1, expr2) {
+        var myExpr1, myExpr2;
+        // Not yet parsed
+        if (typeof expr1 === 'string') {
+            var formula1 = this.decodeFormula(expr1);
+            myExpr1 = this.menv.parse(formula1, "formula");
+        // Already parsed
+        } else if (typeof expr1 === 'object') {
+            myExpr1 = expr1;
+        }
+        if (typeof expr2 === 'string') {
+            var formula2 = this.decodeFormula(expr2);
+            myExpr2 = this.menv.parse(formula2, "formula");
+        // Already parsed
+        } else if (typeof expr2 === 'object') {
+            myExpr2 = expr2;
+        }
+
+        return this.menv.compareMathObjects(myExpr1,myExpr2);
+    }
+
+    getParser(context) {
+        return this.menv.getParser(context);
+    }
 }

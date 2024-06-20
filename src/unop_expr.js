@@ -18,12 +18,12 @@ import { binop_expr } from "./binop_expr.js"
 import { exprType, opPrec } from "./BTM_root.js"
 
 export class unop_expr extends expression {
-    constructor(op, input) {
-        super();
+    constructor(menv, op, input) {
+        super(menv);
         this.type = exprType.unop;
         this.op = op;
         if (typeof input == 'undefined')
-            input = new expression();
+            input = new expression(menv);
         this.inputs = [input];
             input.parent = this;
         switch (op) {
@@ -153,8 +153,8 @@ export class unop_expr extends expression {
         return(opString);
     }
 
-    evaluate(btm, bindings) {
-        var inputVal = this.inputs[0].evaluate(btm, bindings);
+    evaluate(bindings) {
+        var inputVal = this.inputs[0].evaluate(bindings);
 
         var retVal;
         if (inputVal == undefined) {
@@ -180,23 +180,23 @@ export class unop_expr extends expression {
         return(retVal);
     }
 
-    simplifyConstants(btm) {
+    simplifyConstants() {
         var retVal;
 
-        this.inputs[0] = this.inputs[0].simplifyConstants(btm);
+        this.inputs[0] = this.inputs[0].simplifyConstants();
         this.inputs[0].parent = this;
         if (this.inputs[0].type == exprType.number) {
             var theNumber = this.inputs[0].number;
             switch (this.op) {
                 case '-':
                     if (options.negativeNumbers) {
-                    retVal = new scalar_expr(theNumber.addInverse());
+                    retVal = new scalar_expr(this.menv, theNumber.addInverse());
                     } else {
                     retVal = this;
                     }
                     break;
                 case '/':
-                    retVal = new scalar_expr(theNumber.multInverse());
+                    retVal = new scalar_expr(this.menv, theNumber.multInverse());
                     break;
             }
         } else {
@@ -206,15 +206,15 @@ export class unop_expr extends expression {
     }
 
     flatten() {
-      return(new unop_expr(this.op, this.inputs[0].flatten()));
+      return(new unop_expr(this.menv, this.op, this.inputs[0].flatten()));
     }
 
     copy() {
-      return(new unop_expr(this.op, this.inputs[0].copy()));
+      return(new unop_expr(this.menv, this.op, this.inputs[0].copy()));
     }
 
     compose(bindings) {
-        return(new unop_expr(this.op, this.inputs[0].compose(bindings)));
+        return(new unop_expr(this.menv, this.op, this.inputs[0].compose(bindings)));
     }
 
     derivative(ivar, varList) {
@@ -222,18 +222,18 @@ export class unop_expr extends expression {
 
         var uConst = this.inputs[0].isConstant();
         if (uConst) {
-            theDeriv = new scalar_expr(0);
+            theDeriv = new scalar_expr(this.menv, 0);
         } else {
             switch (this.op) {
                 case '+':
                     theDeriv = this.inputs[0].derivative(ivar, varList);
                     break;
                 case '-':
-                    theDeriv = new unop_expr('-', this.inputs[0].derivative(ivar, varList));
+                    theDeriv = new unop_expr(this.menv, '-', this.inputs[0].derivative(ivar, varList));
                     break;
                 case '/':
-                    var denom = new binop_expr('*', this.inputs[0], this.inputs[0]);
-                    theDeriv = new unop_expr('-', new binop_expr('/', this.inputs[0].derivative(ivar, varList), denom));
+                    var denom = new binop_expr(this.menv, '*', this.inputs[0], this.inputs[0]);
+                    theDeriv = new unop_expr(this.menv, '-', new binop_expr(this.menv, '/', this.inputs[0].derivative(ivar, varList), denom));
                     break;
                 default:
                     console.log("The derivative of the unary operator '" + this.op + "' is not defined.");

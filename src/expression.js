@@ -8,11 +8,13 @@
  * Date: @DATE
  */
 
-import { BTM, exprValue } from "./BTM_root.js"
+import { MENV, exprValue } from "./BTM_root.js"
 import { findMatchRules } from "./reductions.js"
 
 export class MathObject {
-    constructor() {
+    constructor(menv) {
+        this.menv = menv;
+
         this.select = false;
         this.parent = null;
         this.inputs = [];
@@ -114,8 +116,8 @@ export class MathObject {
 }
 
 export class expression extends MathObject {
-  constructor() {
-        super();
+  constructor(menv) {
+        super(menv);
         this.select = false;
         this.parent = null;
         this.inputs = [];
@@ -229,9 +231,9 @@ export class expression extends MathObject {
 
     // When subtree only involves constants, simplify the formula to a value.
     // Default: Look at all descendants (inputs) and simplify there.
-    simplifyConstants(btm) {
+    simplifyConstants() {
         for (var i in this.inputs) {
-            this.inputs[i] = this.inputs[i].simplifyConstants(btm);
+            this.inputs[i] = this.inputs[i].simplifyConstants();
             this.inputs[i].parent = this;
         }
         return(this);
@@ -284,7 +286,7 @@ export class expression extends MathObject {
     }
 
     // Evaluate the expression given the bindings to symbols.
-    evaluate(btm, bindings) {
+    evaluate(bindings) {
         return(0);
     }
 
@@ -297,7 +299,7 @@ export class expression extends MathObject {
     // *options* gives options associated with testing (e.g., relative tolerance)
     // but also supports fixing certain bindings.
     // Supports abstract input matching against variables using *matchInputs*
-    compare(btm, testExpr, options, matchInputs) {
+    compare(testExpr, options, matchInputs) {
         var isEqual = true;
         var i, n;
 
@@ -305,7 +307,7 @@ export class expression extends MathObject {
             matchInputs = false;
         }
         if (options == undefined) {
-            options = {};
+            options = this.menv.options;
         }
         var knownBindings = Object.keys(options);
         var unknownBindings = [];
@@ -389,8 +391,8 @@ export class expression extends MathObject {
                 x = variableList[i];
                 bindings[x] = testPointList[i][odometer[i]];
             }
-            y1 = this.evaluate(btm, bindings);
-            y2 = testExpr.evaluate(btm, bindings);
+            y1 = this.evaluate(bindings);
+            y2 = testExpr.evaluate(bindings);
             // Both finite? Check for relative error.
             if (isFinite(y1) && isFinite(y2)) {
                 if (!(Math.abs(y1)<1e-12 && Math.abs(y2)<1e-12)
@@ -441,7 +443,7 @@ export class expression extends MathObject {
                     for (i=0; i<flatB.inputs.length && isEqual; i++) {
                         var matchFound = false;
                         for (j=0; j<flatA.inputs.length && !matchFound; j++) {
-                            if (!inputMatched[j] && flatA.inputs[j].compare(flatB.inputs[i])) {
+                            if (!inputMatched[j] && flatA.inputs[j].compare(flatB.inputs[i], options)) {
                                 inputMatched[j] = true;
                                 matchFound = true;
                             }
@@ -459,18 +461,18 @@ export class expression extends MathObject {
     }
 
     // Apply reduction rules to create a reduced expression
-    reduce(btm) {
-        var workExpr = this.simplifyConstants(btm);
+    reduce() {
+        var workExpr = this.simplifyConstants();
         var matchRules;
 
         // Check for reductions on inputs.
         for (var i in workExpr.inputs) {
-            workExpr.inputs[i] = workExpr.inputs[i].reduce(btm);
+            workExpr.inputs[i] = workExpr.inputs[i].reduce();
         }
-        matchRules = findMatchRules(btm.reduceRules, workExpr, true);
+        matchRules = findMatchRules(this.menv.reduceRules, workExpr, true);
         while (matchRules.length > 0) {
-            workExpr = btm.parse(matchRules[0].subStr, this.context);
-            matchRules = findMatchRules(btm.reduceRules, workExpr, true);
+            workExpr = this.menv.parse(matchRules[0].subStr, this.context);
+            matchRules = findMatchRules(this.menv.reduceRules, workExpr, true);
         }
         return workExpr;
     }

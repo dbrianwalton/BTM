@@ -17,14 +17,14 @@ import { scalar_expr } from "./scalar_expr.js"
 import { exprType, opPrec } from "./BTM_root.js"
 
 export class multiop_expr extends expression {
-    constructor(op, inputs) {
-        super();
+    constructor(menv, op, inputs) {
+        super(menv);
         this.type = exprType.multiop;
         this.op = op;
         this.inputs = inputs; // an array
         for (var i in inputs) {
             if (typeof inputs[i] == 'undefined')
-                inputs[i] = new expression();
+                inputs[i] = new expression(menv);
             inputs[i].parent = this;
         }
         switch (op) {
@@ -231,7 +231,7 @@ export class multiop_expr extends expression {
         return(commutes);
     }
 
-    evaluate(btm, bindings) {
+    evaluate(bindings) {
         var inputVal;
         var i;
         var retVal;
@@ -240,14 +240,14 @@ export class multiop_expr extends expression {
             case '+':
                 retVal = 0;
                 for (i in this.inputs) {
-                    inputVal = this.inputs[i].evaluate(btm, bindings);
+                    inputVal = this.inputs[i].evaluate(bindings);
                     retVal += inputVal;
                 }
                 break;
             case '*':
                 retVal = 1;
                 for (i in this.inputs) {
-                    inputVal = this.inputs[i].evaluate(btm, bindings);
+                    inputVal = this.inputs[i].evaluate(bindings);
                     retVal *= inputVal;
                 }
                 break;
@@ -277,7 +277,7 @@ export class multiop_expr extends expression {
         if (newInputs.length == 0) {
             // Adding no elements = 0
             // Multiplying no elements = 1
-            retValue = new scalar_expr(this.op == '+' ? 0 : 1);
+            retValue = new scalar_expr(this.menv, this.op == '+' ? 0 : 1);
         } else if (newInputs.length == 1) {
             retValue = newInputs[0];
         } else {
@@ -295,7 +295,7 @@ export class multiop_expr extends expression {
                     }
                 }
             }
-            retValue = new multiop_expr(this.op, newInputs);
+            retValue = new multiop_expr(this.menv, this.op, newInputs);
         }
         return(retValue);
     }
@@ -308,7 +308,7 @@ export class multiop_expr extends expression {
             if (this.inputs.length == 0) {
                 // Sum with no elements = 0
                 // Product with no elements = 1
-                newExpr = new scalar_expr(this.op == '+' ? 0 : 1);
+                newExpr = new scalar_expr(this.menv, this.op == '+' ? 0 : 1);
             } else {
                 // Sum or product with one element *is* that element.
                 newExpr = this.inputs[0];
@@ -357,17 +357,17 @@ export class multiop_expr extends expression {
             var newInput;
             switch (this.op) {
                 case '+':
-                    newInputs.push(newInput = new scalar_expr(newConstant));
+                    newInputs.push(newInput = new scalar_expr(this.menv, newConstant));
                     break;
                 case '*':
-                    newInputs.splice(0, 0, newInput = new scalar_expr(newConstant));
+                    newInputs.splice(0, 0, newInput = new scalar_expr(this.menv, newConstant));
                     break;
             }
             if (newInputs.length == 1) {
                 newExpr = newInputs[0];
             } else {
                 newInput.parent = this;
-                newExpr = new multiop_expr(this.op, newInputs);
+                newExpr = new multiop_expr(this.menv, this.op, newInputs);
             }
         }
         return(newExpr);
@@ -404,10 +404,10 @@ export class multiop_expr extends expression {
                     for (var j=0; j<=expr.inputs.length-n; j++) {
                         newInputs[j] = expr.inputs[n+j-1].copy();
                     }
-                    cmpInputs[i] = new multiop_expr(expr.op, newInputs);
+                    cmpInputs[i] = new multiop_expr(this.menv, expr.op, newInputs);
                 }
             }
-            cmpExpr = new multiop_expr(expr.op, cmpInputs);
+            cmpExpr = new multiop_expr(this.menv, expr.op, cmpInputs);
 
             // Now make the comparison.
             retValue = copyBindings(bindings);
@@ -425,12 +425,12 @@ export class multiop_expr extends expression {
                         for (var j=0; j<=diff; j++) {
                             newInputs[j] = expr.inputs[j].copy();
                         }
-                        cmpInputs[i] = new multiop_expr(expr.op, newInputs);
+                        cmpInputs[i] = new multiop_expr(this.menv, expr.op, newInputs);
                     } else {
                         cmpInputs[i] = expr.inputs[diff+i].copy();
                     }
                 }
-                cmpExpr = new multiop_expr(expr.op, cmpInputs);
+                cmpExpr = new multiop_expr(this.menv, expr.op, cmpInputs);
 
                 // Now make the comparison.
                 retValue = copyBindings(bindings);
@@ -449,11 +449,11 @@ export class multiop_expr extends expression {
 
         var retValue;
         if (newInputs.length == 0) {
-            retValue = new scalar_expr(this.op == '+' ? 0 : 1);
+            retValue = new scalar_expr(this.menv, this.op == '+' ? 0 : 1);
         } else if (newInputs.length == 1) {
             retValue = newInputs[0];
         } else {
-            retValue = new multiop_expr(this.op, newInputs);
+            retValue = new multiop_expr(this.menv, this.op, newInputs);
         }
         return(retValue);
     }
@@ -479,17 +479,17 @@ export class multiop_expr extends expression {
                                 dProdTerms.push(this.inputs[j].compose({}));
                             }
                         }
-                        dTerms.push(new multiop_expr('*', dProdTerms));
+                        dTerms.push(new multiop_expr(this.menv, '*', dProdTerms));
                         break;
                 }
             }
         }
         if (dTerms.length == 0) {
-            theDeriv = new scalar_expr(0);
+            theDeriv = new scalar_expr(this.menv, 0);
         } else if (dTerms.length == 1) {
             theDeriv = dTerms[0];
         } else {
-            theDeriv = new multiop_expr('+', dTerms);
+            theDeriv = new multiop_expr(this.menv, '+', dTerms);
         }
         return(theDeriv);
     }
