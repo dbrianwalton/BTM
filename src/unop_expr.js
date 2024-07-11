@@ -189,7 +189,7 @@ export class unop_expr extends expression {
             var theNumber = this.inputs[0].number;
             switch (this.op) {
                 case '-':
-                    if (options.negativeNumbers) {
+                    if (this.menv.options.negativeNumbers) {
                     retVal = new scalar_expr(this.menv, theNumber.addInverse());
                     } else {
                     retVal = this;

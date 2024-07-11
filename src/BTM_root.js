@@ -85,6 +85,7 @@ export class MENV {
         if (typeof settings.seed !== 'undefined') {
             rngOptions.seed = settings.seed;
         }
+        rngOptions.absTol = this.options.absTol;
         this.rng = new RNG(rngOptions);
     }
 
@@ -181,10 +182,8 @@ export class MENV {
                 if (typeof by.value === 'function') {
                     by = by.value();
                 }
-                let Nvals = Math.floor((max-min) / by)+1;
-                do {
-                    rndVal = min + by * this.rng.randInt(0,Nvals-1);
-                } while (options.nonzero && Math.abs(rndVal) < this.options.absTol);
+                let nonzero = options.nonzero ? true : false;
+                rndVal = this.rng.randDiscrete(min,max,by,nonzero);
                 break;
         }
         rndScalar = new scalar_expr(this, rndVal);
@@ -411,8 +410,10 @@ export class MENV {
             endPos = charPos + theName.length;
           }
         }
-        // Test if a function
-        if (bindings[theName]===undefined && workingStr.charAt(endPos) == '(') {
+        // Test if a function.
+        // Expand this once we allow parsing of user-defined functions.
+        if (workingStr.charAt(endPos) == '(' && 
+            (bindings[theName]===undefined)) {
           var endParen = completeParenthesis(workingStr, endPos);
 
           var fcnName = theName;
@@ -508,18 +509,20 @@ export class MENV {
     if (parseError.length > 0) {
         finalExpression.setParsingError(parseError);
     } else {
+        // Substitute any expressions provided
+        finalExpression = finalExpression.compose(bindings);
         // Test if context is consistent
         switch (context) {
             case 'number':
                 if (!finalExpression.isConstant()) {
-                    //throw "The expression should be a constant but depends on variables."
+                    throw new TypeError(`The expression ${formulaStr} is expected to be a constant but depends on variables.`);
                 }
-                finalExpression = new scalar_expr(this, finalExpression.value());
+                finalExpression.simplifyConstants();
                 break;
             case 'formula':
                 break;
         }
-        //finalExpression.setContext(context);
+        finalExpression.setContext(context);
     }
     if (options.doFlatten) {
       finalExpression.flatten();
@@ -751,7 +754,8 @@ export class BTM {
         // Not yet parsed
         if (typeof expression === 'string') {
             var formula = this.decodeFormula(expression);
-            newExpr = this.menv.parse(formula, context);
+            newExpr = this.menv.parse(formula, context, this.data.allValues)
+                            .compose(this.data.allValues);
         // Already parsed
         } else if (typeof expression === 'object') {
             newExpr = expression;

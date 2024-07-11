@@ -242,6 +242,22 @@ export class RNG {
         return(a);
     }
 
+    // Randomly choose floating point uniformly in [min,max)
+    randDiscrete(min, max, by, nonzero) {
+        if (arguments.length < 3 || by == 0) {
+            by = 1;
+        }
+        if (arguments.length < 4) {
+            nonzero=false;
+        }
+        var rndVal;
+        let Nvals = Math.floor((max-min) / by)+1;
+        do {
+            rndVal = min + by * this.randInt(0,Nvals-1);
+        } while (nonzero && Math.abs(rndVal) < 1e-16);
+        return(rndVal);
+    }
+
     // Randomly a k-length permuted subsequence of {min, ..., max}
     randChoice(min, max, k) {
         var a = new Array();
