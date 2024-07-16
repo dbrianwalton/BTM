@@ -167,22 +167,61 @@ export class MENV {
 
     generateRandom(distr, options) {
         var rndVal, rndScalar;
-
+        var min, max, by, nonzero;
         switch (distr) {
-            case 'discrete':
-                let min = options.min;
+            case 'uniform':
+                min=options.min;
                 if (typeof min.value === 'function') {
                     min = min.value();
                 }
-                let max = options.max;
+                if (min == undefined) {
+                    min = 0;
+                }
+                max=options.max;
                 if (typeof max.value === 'function') {
                     max = max.value();
                 }
-                let by = options.by;
+                if (max == undefined) {
+                    max = 1;
+                }
+                rndVal = this.rng.randUniform(min,max);
+                break;
+            case 'sign':
+                rndVal = this.rng.randSign();
+                break;
+            case 'integer':
+                min=options.min;
+                if (typeof min.value === 'function') {
+                    min = min.value();
+                }
+                if (min == undefined) {
+                    min = 0;
+                }
+                min = Math.floor(min);
+                max=options.max;
+                if (typeof max.value === 'function') {
+                    max = max.value();
+                }
+                if (max == undefined) {
+                    max = 1;
+                }
+                max = Math.floor(max);
+                rndVal = this.rng.randInt(min,max);
+                break;
+            case 'discrete':
+                min = options.min;
+                if (typeof min.value === 'function') {
+                    min = min.value();
+                }
+                max = options.max;
+                if (typeof max.value === 'function') {
+                    max = max.value();
+                }
+                by = options.by;
                 if (typeof by.value === 'function') {
                     by = by.value();
                 }
-                let nonzero = options.nonzero ? true : false;
+                nonzero = options.nonzero ? true : false;
                 rndVal = this.rng.randDiscrete(min,max,by,nonzero);
                 break;
         }
