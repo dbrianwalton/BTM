@@ -38,12 +38,12 @@ class Match {
         for (var j in missVars) {
             bindings[missVars[j]] = "input"+(+j+1)+"";
         }
-        var substExpr = testRule.eqExpr.compose(bindings);
+        this.subExpr = testRule.eqExpr.compose(bindings);
 
-        this.subTeX = substExpr.toTeX();
-        this.subStr = substExpr.toString();
+        this.subTeX = this.subExpr.toTeX();
+        this.subStr = this.subExpr.toString();
         this.name = testRule.description;
-        if (substExpr.type == exprType.binop && substExpr.valueType == exprValue.bool) {
+        if (this.subExpr.type == exprType.binop && this.subExpr.valueType == exprValue.bool) {
             this.equation = testRule.refExpr.toTeX() + " \\iff " + testRule.eqExpr.toTeX();
         } else {
             this.equation = testRule.refExpr.toTeX() + "=" + testRule.eqExpr.toTeX();
@@ -143,6 +143,7 @@ export function defaultReductions(menv) {
     newRule(menv, reduceRules, 'x+0==x', 'Additive Identity', true, true);
     newRule(menv, reduceRules, '0-x==-x', 'Additive Inverse', true, true);
     newRule(menv, reduceRules, 'x-0==x', 'Additive Identity', true, true);
+    newRule(menv, reduceRules, 'x+-(0)==x', 'Additive Identity', true, true);
     newRule(menv, reduceRules, '0*x==0', 'Multiply by Zero', true, true);
     newRule(menv, reduceRules, 'x*0==0', 'Multiply by Zero', true, true);
     newRule(menv, reduceRules, '1*x==x', 'Multiplicative Identity', true, true);
@@ -158,13 +159,10 @@ export function defaultReductions(menv) {
     newRule(menv, reduceRules, 'x-x==0', 'Additive Inverses Cancel', true, true);
     newRule(menv, reduceRules, 'x+-x==0', 'Additive Inverses Cancel', true, true);
     newRule(menv, reduceRules, '-x+x==0', 'Additive Inverses Cancel', true, true);
-    newRule(menv, reduceRules, '(-x)+y==y-x', "Swap Leading Negative", true, true);
     newRule(menv, reduceRules, 'x+(-y)==x-y', "Subtraction", true, true);
     newRule(menv, reduceRules, '(-x)+(-y)==-(x+y)', "Factor Negation from Addition", true, true);
-    newRule(menv, reduceRules, '(-x)-y==-(x+y)', "Factor Negation from Addition", true, true);
     newRule(menv, reduceRules, 'x-(-y)==x+y', "Additive Inverse's Inverse", true, true);
-    newRule(menv, reduceRules, '(-x)*y==-(x*y)', "Factor Negation from Multiplication", true, true);
-    newRule(menv, reduceRules, 'x*(-y)==-(x*y)', "Factor Negation from Multiplication", true, true);
+    newRule(menv, reduceRules, 'x*(-y)==(-x)*y', "Factor Negation from Multiplication", true, true);
     newRule(menv, reduceRules, '(-x)/y==-(x/y)', "Factor Negation from Multiplication", true, true);
     newRule(menv, reduceRules, 'x/(-y)==-(x/y)', "Factor Negation from Multiplication", true, true);
     newRule(menv, reduceRules, '-(-x)==x', "Additive Inverse's Inverse", true, true);

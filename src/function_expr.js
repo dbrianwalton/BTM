@@ -13,7 +13,7 @@
    * *************************************************** */
 
 import { expression } from "./expression.js"
-import { scalar_expr } from "./scalar_expr.js"
+import { create_scalar } from "./scalar_expr.js"
 import { variable_expr } from "./variable_expr.js"
 import { unop_expr } from "./unop_expr.js"
 import { binop_expr } from "./binop_expr.js"
@@ -537,7 +537,7 @@ export class function_expr extends expression {
         }
 
         if (uConst) {
-            theDeriv = new scalar_expr(this.menv, 0);
+            theDeriv = create_scalar(this.menv, 0);
         } else {
             var dydu;
 
@@ -550,7 +550,7 @@ export class function_expr extends expression {
                         break;
                     case 'tan':
                         var theSec = new function_expr(this.menv, 'sec', this.inputs[0]);
-                        dydu = new binop_expr(this.menv, '^', theSec, new scalar_expr(this.menv, 2));
+                        dydu = new binop_expr(this.menv, '^', theSec, create_scalar(this.menv, 2));
                         break;
                     case 'csc':
                         var theCot = new function_expr(this.menv, 'cot', this.inputs[0]);
@@ -562,36 +562,36 @@ export class function_expr extends expression {
                         break;
                     case 'cot':
                         var theCsc = new function_expr(this.menv, 'csc', this.inputs[0]);
-                        dydu = new unop_expr(this.menv, '-', new binop_expr(this.menv, '^', theCsc, new scalar_expr(this.menv, 2)));
+                        dydu = new unop_expr(this.menv, '-', new binop_expr(this.menv, '^', theCsc, create_scalar(this.menv, 2)));
                         break;
                     case 'arcsin':
-                        var theCos = new binop_expr(this.menv, '-', new scalar_expr(this.menv, 1), new binop_expr(this.menv, '^', this.inputs[0], new scalar_expr(this.menv, 2)));
-                        dydu = new binop_expr(this.menv, '/', new scalar_expr(this.menv, 1), new function_expr(this.menv, 'sqrt', theCos));
+                        var theCos = new binop_expr(this.menv, '-', create_scalar(this.menv, 1), new binop_expr(this.menv, '^', this.inputs[0], create_scalar(this.menv, 2)));
+                        dydu = new binop_expr(this.menv, '/', create_scalar(this.menv, 1), new function_expr(this.menv, 'sqrt', theCos));
                         break;
                     case 'arccos':
-                        var theSin = new binop_expr(this.menv, '-', new scalar_expr(this.menv, 1), new binop_expr(this.menv, '^', this.inputs[0], new scalar_expr(this.menv, 2)));
-                        dydu = new binop_expr(this.menv, '/', new scalar_expr(this.menv, -1), new function_expr(this.menv, 'sqrt', theSin));
+                        var theSin = new binop_expr(this.menv, '-', create_scalar(this.menv, 1), new binop_expr(this.menv, '^', this.inputs[0], create_scalar(this.menv, 2)));
+                        dydu = new binop_expr(this.menv, '/', create_scalar(this.menv, -1), new function_expr(this.menv, 'sqrt', theSin));
                         break;
                     case 'arctan':
-                        var tanSq = new binop_expr(this.menv, '^', this.inputs[0], new scalar_expr(this.menv, 2));
-                        dydu = new binop_expr(this.menv, '/', new scalar_expr(this.menv, 1), new binop_expr(this.menv, '+', new scalar_expr(this.menv, 1), tanSq));
+                        var tanSq = new binop_expr(this.menv, '^', this.inputs[0], create_scalar(this.menv, 2));
+                        dydu = new binop_expr(this.menv, '/', create_scalar(this.menv, 1), new binop_expr(this.menv, '+', create_scalar(this.menv, 1), tanSq));
                         break;
                     case 'arcsec':
-                        var theSq = new binop_expr(this.menv, '^', this.inputs[0], new scalar_expr(this.menv, 2));
-                        var theRad = new binop_expr(this.menv, '-', theSq, new scalar_expr(this.menv, 1));
-                        dydu = new binop_expr(this.menv, '/', new scalar_expr(this.menv, 1), new binop_expr(this.menv, '*', new function_expr(this.menv, 'abs', this.inputs[0]), new function_expr(this.menv, 'sqrt', theRad)));
+                        var theSq = new binop_expr(this.menv, '^', this.inputs[0], create_scalar(this.menv, 2));
+                        var theRad = new binop_expr(this.menv, '-', theSq, create_scalar(this.menv, 1));
+                        dydu = new binop_expr(this.menv, '/', create_scalar(this.menv, 1), new binop_expr(this.menv, '*', new function_expr(this.menv, 'abs', this.inputs[0]), new function_expr(this.menv, 'sqrt', theRad)));
                         break;
                     case 'arccsc':
-                        var theSq = new binop_expr(this.menv, '^', this.inputs[0], new scalar_expr(this.menv, 2));
-                        var theRad = new binop_expr(this.menv, '-', theSq, new scalar_expr(this.menv, 1));
-                        dydu = new binop_expr(this.menv, '/', new scalar_expr(this.menv, -1), new binop_expr(this.menv, '*', new function_expr(this.menv, 'abs', this.inputs[0]), new function_expr(this.menv, 'sqrt', theRad)));
+                        var theSq = new binop_expr(this.menv, '^', this.inputs[0], create_scalar(this.menv, 2));
+                        var theRad = new binop_expr(this.menv, '-', theSq, create_scalar(this.menv, 1));
+                        dydu = new binop_expr(this.menv, '/', create_scalar(this.menv, -1), new binop_expr(this.menv, '*', new function_expr(this.menv, 'abs', this.inputs[0]), new function_expr(this.menv, 'sqrt', theRad)));
                         break;
                     case 'arccot':
-                        var cotSq = new binop_expr(this.menv, '^', this.inputs[0], new scalar_expr(this.menv, 2));
-                        dydu = new binop_expr(this.menv, '/', new scalar_expr(this.menv, -1), new binop_expr(this.menv, '+', new scalar_expr(this.menv, 1), cotSq));
+                        var cotSq = new binop_expr(this.menv, '^', this.inputs[0], create_scalar(this.menv, 2));
+                        dydu = new binop_expr(this.menv, '/', create_scalar(this.menv, -1), new binop_expr(this.menv, '+', create_scalar(this.menv, 1), cotSq));
                         break;
                     case 'sqrt':
-                        dydu = new binop_expr(this.menv, '/', new scalar_expr(this.menv, 1), new binop_expr(this.menv, '*', new scalar_expr(this.menv, 2), this));
+                        dydu = new binop_expr(this.menv, '/', create_scalar(this.menv, 1), new binop_expr(this.menv, '*', create_scalar(this.menv, 2), this));
                         break;
                     case 'abs':
                         dydu = new binop_expr(this.menv, '/', this, this.inputs[0]);
@@ -601,10 +601,10 @@ export class function_expr extends expression {
                         dydu = new function_expr(this.menv, this.name, this.inputs[0]);
                         break;
                     case 'ln':
-                        dydu = new binop_expr(this.menv, '/', new scalar_expr(this.menv, 1), this.inputs[0]);
+                        dydu = new binop_expr(this.menv, '/', create_scalar(this.menv, 1), this.inputs[0]);
                         break;
                     case 'log10':
-                        dydu = new binop_expr(this.menv, '/', new scalar_expr(this.menv, Math.LOG10E), this.inputs[0]);
+                        dydu = new binop_expr(this.menv, '/', create_scalar(this.menv, Math.LOG10E), this.inputs[0]);
                         break;
                     default:
                         dydu = new function_expr(this.menv, this.getName()+"'", this.inputs[0]);

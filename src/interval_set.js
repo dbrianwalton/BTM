@@ -14,7 +14,7 @@
 
 import { MathObject } from "./expression.js"
 import { exprType, BTM } from "./BTM_root.js"
-import { scalar_expr } from "./scalar_expr";
+import { scalar_expr, create_scalar } from "./scalar_expr";
 
 export class math_set extends MathObject {
 }
@@ -22,11 +22,11 @@ export class math_set extends MathObject {
 export class real_interval extends math_set {
     constructor(a, b, interval_type) {
         super();
-        a = new scalar_expr(a);
+        a = create_scalar(a);
     }
     if (!(a instanceof scalar_expr)) {
         if (!(b instanceof scalar_expr)) {
-            b = new scalar_expr(b);
+            b = create_scalar(b);
         }
         this.min = a;
         this.max = b;

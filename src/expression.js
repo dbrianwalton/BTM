@@ -8,8 +8,9 @@
  * Date: @DATE
  */
 
-import { MENV, exprValue } from "./BTM_root.js"
+import { MENV, exprType, exprValue } from "./BTM_root.js"
 import { findMatchRules } from "./reductions.js"
+import { create_scalar } from "./scalar_expr.js"
 
 export class MathObject {
     constructor(menv) {
@@ -462,7 +463,7 @@ export class expression extends MathObject {
 
     // Apply reduction rules to create a reduced expression
     reduce() {
-        var workExpr = this.simplifyConstants();
+        var workExpr = this.copy();
         var matchRules;
 
         // Check for reductions on inputs.
@@ -471,7 +472,7 @@ export class expression extends MathObject {
         }
         matchRules = findMatchRules(this.menv.reduceRules, workExpr, true);
         while (matchRules.length > 0) {
-            workExpr = this.menv.parse(matchRules[0].subStr, this.context);
+            workExpr = matchRules[0].subExpr;
             matchRules = findMatchRules(this.menv.reduceRules, workExpr, true);
         }
         return workExpr;
@@ -479,7 +480,7 @@ export class expression extends MathObject {
 
     
     derivative(ivar, varList) {
-        return(new scalar_expr(0));
+        return(create_scalar(0));
     }
 
     /*
@@ -518,3 +519,31 @@ export class expression extends MathObject {
         }
     }
 }
+
+// Special class that can't match or be evaluated.
+export class undef_expr extends expression {
+    constructor(menv) {
+        super(menv);
+        this.type = exprType.undef;
+        this.valueType = exprValue.undef;
+    }
+    value(bindings) {
+        return Number.NaN;
+    }
+    compare(testExpr, options, matchInputs) {
+        return false;
+    }
+    copy() {
+        return(new undef_expr(this.menv));
+    }
+    compose(bindings) {
+        return(new undef_expr(this.menv));
+    }
+    derivative(ivar, varList) {
+        return(new undef_expr(this.menv));
+    }
+    match(expr, bindings) {
+        return null;
+    }
+}  
+  

@@ -15,7 +15,33 @@
 import { expression } from "./expression.js"
 import { real_number } from "./real_number.js"
 import { rational_number } from "./rational_number.js"
+import { unop_expr } from "./unop_expr.js"
 import { exprType } from "./BTM_root.js"
+
+export function create_scalar(menv, number) {
+    var theNumber;
+    var numObj;
+    if (typeof number === "number" || number instanceof Number) {
+        if (Math.floor(number)==number) {
+            theNumber = new rational_number(number, 1);
+        } else {
+            theNumber = new real_number(number);
+        }
+    } else if (number instanceof real_number) {
+        theNumber = number;
+    } else if (number instanceof scalar_expr) {
+        theNumber = number.number;
+    } else {
+        console.log("Trying to create a scalar_expr with a non-number object: " + number);
+    }
+
+    if (menv.options.negativeNumbers || theNumber.value() >=0) {
+        numObj = new scalar_expr(menv, theNumber);
+    } else {
+        numObj = new unop_expr(menv, '-', new scalar_expr(menv, theNumber.multiply(-1)));
+    }
+    return (numObj);
+}
 
 export class scalar_expr extends expression {
     constructor(menv, number) {
@@ -80,7 +106,7 @@ export class scalar_expr extends expression {
     // Combine constants where possible
     simplifyConstants() {
         var retValue;
-        if (!this.menv.options.negativeNumbers && this.number.p < 0) {
+        if (!this.menv.options.negativeNumbers && this.number.value() < 0) {
             var theNumber = this.number.multiply(-1);
             retValue = new unop_expr(this.menv, '-', new scalar_expr(this.menv, theNumber));
         } else {
@@ -98,15 +124,15 @@ export class scalar_expr extends expression {
     }
     
     copy() {
-        return(new scalar_expr(this.menv, this.number));
+        return(create_scalar(this.menv, this.number));
     }
     
     compose(bindings) {
-        return(new scalar_expr(this.menv, this.number));
+        return(create_scalar(this.menv, this.number));
     }
     
     derivative(ivar, varList) {
-        return(new scalar_expr(this.menv, 0));
+        return(create_scalar(this.menv, 0));
     }
     
     /*

@@ -12,7 +12,7 @@
 * Define the Variable Expression -- a value defined by a name
 * *************************************************** */
 import { expression } from "./expression.js"
-import { scalar_expr } from "./scalar_expr.js"
+import { create_scalar } from "./scalar_expr.js"
 import { exprType, exprValue } from "./BTM_root.js"
 
 export class variable_expr extends expression {
@@ -187,11 +187,11 @@ export class variable_expr extends expression {
         var ivarName = (typeof ivar == 'string') ? ivar : ivar.name;
 
         if (this.name === ivarName) {
-            retVal = new scalar_expr(this.menv, 1);
+            retVal = create_scalar(this.menv, 1);
 
         // If either a constant or another independent variable, deriv=0
         } else if (this.isConst || varList && varList[this.name] != undefined) {
-            retVal = new scalar_expr(this.menv, 0);
+            retVal = create_scalar(this.menv, 0);
 
         // Presuming other variables are dependent variables.
         } else  {
@@ -219,8 +219,8 @@ export class variable_expr extends expression {
         // If never previously assigned, can match any expression.
         } else if (bindings != null && bindings[this.name] == undefined && expr.valueType == exprValue.numeric) {
             retValue = bindings;
-            retValue[this.name] = expr.toString();
-        } else if (bindings != null && bindings[this.name] == expr.toString()) {
+            retValue[this.name] = expr.copy();
+        } else if (bindings != null && bindings[this.name].toString() === expr.toString()) {
             retValue = bindings;
         }
 

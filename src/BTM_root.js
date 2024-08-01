@@ -13,7 +13,7 @@
 ************************* */
 
 import { defaultReductions, defaultSumReductions, defaultProductReductions, disableRule, newRule, findMatchRules } from "./reductions.js"
-import { scalar_expr } from "./scalar_expr.js";
+import { create_scalar } from "./scalar_expr.js";
 import { variable_expr, index_expr } from "./variable_expr.js";
 import { unop_expr } from "./unop_expr.js";
 import { binop_expr } from "./binop_expr.js";
@@ -21,7 +21,7 @@ import { multiop_expr } from "./multiop_expr.js";
 import { function_expr } from "./function_expr.js";
 import { deriv_expr } from "./deriv_expr.js";
 import { RNG } from "./random.js"
-import { expression } from "./expression.js";
+import { expression, undef_expr } from "./expression.js";
 
 export const opPrec = {
     disj: 0,
@@ -35,6 +35,7 @@ export const opPrec = {
 };
 
 export const exprType = {
+    undef: -1,
     number: 0,
     variable: 1,
     fcn: 2,
@@ -225,7 +226,7 @@ export class MENV {
                 rndVal = this.rng.randDiscrete(min,max,by,nonzero);
                 break;
         }
-        rndScalar = new scalar_expr(this, rndVal);
+        rndScalar = create_scalar(this, rndVal);
         return rndScalar;
     }
 
@@ -235,7 +236,7 @@ export class MENV {
         }
         // No expression? Make it random.
         if (arguments.length < 3) {
-            var formula = new scalar_expr(this, this.rng.randRational([-20,20],[1,15]));
+            var formula = create_scalar(this, this.rng.randRational([-20,20],[1,15]));
             var newTerm;
             for (var i=1; i<=6; i++) {
                 if (Array.isArray(input)) {
@@ -250,7 +251,7 @@ export class MENV {
                     newTerm = this.parse("sin("+i+"*"+input+")", "formula");
                 }
                 newTerm = new binop_expr(this, "*",
-                                new scalar_expr(this, this.rng.randRational([-20,20],[1,10])),
+                                create_scalar(this, this.rng.randRational([-20,20],[1,10])),
                                 newTerm);
                 formula = new binop_expr(this, "+", formula, newTerm);
             }
@@ -354,7 +355,7 @@ export class MENV {
 
             // Deal with negative numbers separately.
             if (menv.options.negativeNumbers && input.type == exprType.number && oldOp.op == '-') {
-              newExpr = new scalar_expr(menv, input.number.multiply(-1));
+              newExpr = create_scalar(menv, input.number.multiply(-1));
             } else {
               newExpr = new unop_expr(menv, oldOp.op, input);
             }
@@ -428,7 +429,7 @@ export class MENV {
       // It could be a number. Just read it off
       } else if (workingStr.substr(charPos).search(numberMatch) == 0) {
         endPos = completeNumber(workingStr, charPos, options);
-        var newExpr = new scalar_expr(this, new Number(workingStr.slice(charPos, endPos)));
+        var newExpr = create_scalar(this, new Number(workingStr.slice(charPos, endPos)));
         if (options && options.noDecimals && workingStr.charAt(charPos) == '.') {
           newExpr.setParsingError("Whole numbers only. No decimal values are allowed.")
         }
@@ -544,7 +545,12 @@ export class MENV {
 
     // Now finish up the operator stack: nothing new to include
     resolveOperator(this, operatorStack, operandStack);
-    var finalExpression = operandStack.pop();
+    var finalExpression;
+    if (operandStack.length > 0) {
+        finalExpression = operandStack.pop();
+    } else {
+        finalExpression = new undef_expr(this);
+    }
     if (parseError.length > 0) {
         finalExpression.setParsingError(parseError);
     } else {
@@ -813,7 +819,7 @@ export class BTM {
             theExpr = expression;
         }
         retValue = theExpr.evaluate(bindings);
-        newExpr = new scalar_expr(this.menv, retValue);
+        newExpr = create_scalar(this.menv, retValue);
         return newExpr;
     }
 

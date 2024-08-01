@@ -892,7 +892,7 @@ function applyParentActiveRule() {
       if (i != j) {
         newInputs.push(myBTM.parseExpression(selectExpr.parent.inputs[i].toString()));
       }
-      testExpr = new multiop_expr(selectExpr.parent.op, [new multiop_expr(selectExpr.parent.op, newInputs), selectExpr]);
+      testExpr = create_multiop(selectExpr.parent.op, [create_multiop(selectExpr.parent.op, newInputs), selectExpr]);
     }
   }
 
@@ -929,7 +929,7 @@ function applyActiveInputRule(whichInput) {
         newInputs.push(myBTM.parseExpression(selectExpr.inputs[i].toString()));
       }
     }
-    testExpr = new multiop_expr(selectExpr.op, [new multiop_expr(selectExpr.op, newInputs), selectExpr.inputs[whichInput]]);
+    testExpr = create_multiop(selectExpr.op, [create_multiop(selectExpr.op, newInputs), selectExpr.inputs[whichInput]]);
     whichInput = 1;
   }
 
@@ -962,9 +962,9 @@ function applyActiveInputRule(whichInput) {
       sumTerm = testExpr.inputs[whichInput];
     newInputs = [];
     for (var i in sumTerm.inputs) {
-      newInputs[i] = new multiop_expr('*', [myBTM.parseExpression(factorStr), sumTerm.inputs[i]]).simplifyConstants();
+      newInputs[i] = create_multiop('*', [myBTM.parseExpression(factorStr), sumTerm.inputs[i]]).simplifyConstants();
     }
-    subExpr = new multiop_expr('+', newInputs);
+    subExpr = create_multiop('+', newInputs);
     if (algebWrist.selectExpr.parent === null) {
       algebWrist.theExpr = subExpr;
       algebWrist.selectExpr = subExpr;
@@ -1049,7 +1049,7 @@ window. doTreeAreaClickUp = function (timeStamp, clientX, clientY) {
           dropInput = selectExpr.inputs[dropIndex];
       
         // We want to see what simplification can be done. So see what is allowed.  
-        var tempExpr = new multiop_expr(selectExpr.op, [dropInput, dragInput]),
+        var tempExpr = create_multiop(selectExpr.op, [dropInput, dragInput]),
           ruleMatches = findMatchRules(autoIdentityList, tempExpr, true);
       
         // There was a valid simplification so make the substitution.
@@ -1071,9 +1071,9 @@ window. doTreeAreaClickUp = function (timeStamp, clientX, clientY) {
           var newExpr,
             factorStr = dragInput.toString();
           for (var i in dropInput.inputs) {
-            newInputs[i] = new multiop_expr('*', [myBTM.parseExpression(factorStr), dropInput.inputs[i]]).simplifyConstants();
+            newInputs[i] = create_multiop('*', [myBTM.parseExpression(factorStr), dropInput.inputs[i]]).simplifyConstants();
           }
-          selectExpr.inputs[dropIndex] = new multiop_expr('+', newInputs);
+          selectExpr.inputs[dropIndex] = create_multiop('+', newInputs);
           selectExpr.inputs[dropIndex].parent = selectExpr;
           selectExpr.inputs = selectExpr.inputs.slice(0,dragIndex)
             .concat(selectExpr.inputs.slice(dragIndex+1));
@@ -1095,7 +1095,7 @@ window. doTreeAreaClickUp = function (timeStamp, clientX, clientY) {
           } else {
             newInputs.push(dragInput);
           }
-          selectExpr.inputs[dropIndex] = new multiop_expr(selectExpr.op, newInputs).simplifyConstants();
+          selectExpr.inputs[dropIndex] = create_multiop(selectExpr.op, newInputs).simplifyConstants();
           selectExpr.inputs[dropIndex].parent = selectExpr;
           selectExpr.inputs = selectExpr.inputs.slice(0,dragIndex)
             .concat(selectExpr.inputs.slice(dragIndex+1));

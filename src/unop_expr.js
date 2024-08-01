@@ -13,7 +13,7 @@
 * *************************************************** */
 
 import { expression } from "./expression.js"
-import { scalar_expr } from "./scalar_expr.js"
+import { create_scalar } from "./scalar_expr.js"
 import { binop_expr } from "./binop_expr.js"
 import { exprType, opPrec } from "./BTM_root.js"
 
@@ -180,6 +180,16 @@ export class unop_expr extends expression {
         return(retVal);
     }
 
+    reduce() {
+        var workExpr = super.reduce();
+        var newExpr = workExpr;
+        if (workExpr.type == exprType.unop && workExpr.op == '-' 
+            && workExpr.inputs[0].isConstant() && workExpr.value()==0) {
+            newExpr = create_scalar(this.menv, 0)
+        }
+        return(newExpr);
+    }
+
     simplifyConstants() {
         var retVal;
 
@@ -190,13 +200,15 @@ export class unop_expr extends expression {
             switch (this.op) {
                 case '-':
                     if (this.menv.options.negativeNumbers) {
-                    retVal = new scalar_expr(this.menv, theNumber.addInverse());
+                        retVal = create_scalar(this.menv, theNumber.addInverse());
+                    } else if (theNumber.value() == 0) {
+                        retVal = create_scalar(this.menv, 0);
                     } else {
-                    retVal = this;
+                        retVal = this;
                     }
                     break;
                 case '/':
-                    retVal = new scalar_expr(this.menv, theNumber.multInverse());
+                    retVal = create_scalar(this.menv, theNumber.multInverse());
                     break;
             }
         } else {
@@ -222,7 +234,7 @@ export class unop_expr extends expression {
 
         var uConst = this.inputs[0].isConstant();
         if (uConst) {
-            theDeriv = new scalar_expr(this.menv, 0);
+            theDeriv = create_scalar(this.menv, 0);
         } else {
             switch (this.op) {
                 case '+':
@@ -230,6 +242,9 @@ export class unop_expr extends expression {
                     break;
                 case '-':
                     theDeriv = new unop_expr(this.menv, '-', this.inputs[0].derivative(ivar, varList));
+                    if (theDeriv.isConstant()) {
+                        theDeriv = theDeriv.simplifyConstants();
+                    }
                     break;
                 case '/':
                     var denom = new binop_expr(this.menv, '*', this.inputs[0], this.inputs[0]);

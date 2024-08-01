@@ -12,9 +12,23 @@
 * Define the Multi-Operand Expression (for sum and product)
 * *************************************************** */
 
-import { expression } from "./expression.js"
-import { scalar_expr } from "./scalar_expr.js"
 import { exprType, opPrec } from "./BTM_root.js"
+import { expression } from "./expression.js"
+import { create_scalar } from "./scalar_expr.js"
+import { rational_number } from "./rational_number.js"
+
+// Do some preliminary testing to reduce the op if redundant inputs.
+export function create_multiop(menv, op, inputs) {
+    var newInputs = [];
+    for (let i in inputs) {
+        if (inputs[i].type == exprType.multiop && inputs[i].op == op) {
+            newInputs.push(...inputs[i].inputs);
+        } else {
+            newInputs.push(inputs[i]);
+        }
+    }
+    return new multiop_expr(menv, op, newInputs);
+}
 
 export class multiop_expr extends expression {
     constructor(menv, op, inputs) {
@@ -277,7 +291,7 @@ export class multiop_expr extends expression {
         if (newInputs.length == 0) {
             // Adding no elements = 0
             // Multiplying no elements = 1
-            retValue = new scalar_expr(this.menv, this.op == '+' ? 0 : 1);
+            retValue = create_scalar(this.menv, this.op == '+' ? 0 : 1);
         } else if (newInputs.length == 1) {
             retValue = newInputs[0];
         } else {
@@ -295,7 +309,7 @@ export class multiop_expr extends expression {
                     }
                 }
             }
-            retValue = new multiop_expr(this.menv, this.op, newInputs);
+            retValue = create_multiop(this.menv, this.op, newInputs);
         }
         return(retValue);
     }
@@ -303,15 +317,16 @@ export class multiop_expr extends expression {
     // See if this operator is now redundant.
     // Return the resulting expression.
     reduce() {
-        var newExpr = this;
-        if (this.inputs.length <= 1) {
-            if (this.inputs.length == 0) {
+        var workExpr = super.reduce();
+        var newExpr = workExpr;
+        if (workExpr.type == exprType.multiop && workExpr.inputs.length <= 1) {
+            if (workExpr.inputs.length == 0) {
                 // Sum with no elements = 0
                 // Product with no elements = 1
-                newExpr = new scalar_expr(this.menv, this.op == '+' ? 0 : 1);
+                newExpr = create_scalar(this.menv, workExpr.op == '+' ? 0 : 1);
             } else {
                 // Sum or product with one element *is* that element.
-                newExpr = this.inputs[0];
+                newExpr = workExpr.inputs[0];
             }
             newExpr.parent = this.parent;
             if (this.parent !== null) {
@@ -322,15 +337,16 @@ export class multiop_expr extends expression {
     }
 
     simplifyConstants() {
-        var i,
-            constIndex = [],
+        var constIndex = [],
             newInputs = [];
         // Simplify all inputs
         // Notice which inputs are themselves constant 
-        for (i in this.inputs) {
+        for (let i in this.inputs) {
             this.inputs[i] = this.inputs[i].simplifyConstants();
             this.inputs[i].parent = this;
-            if (this.inputs[i].type == exprType.number) {
+            if (this.inputs[i].type == exprType.number ||
+                (this.inputs[i].type == exprType.unop && this.inputs[i].inputs[0].type == exprType.number)
+            ) {
                 constIndex.push(i);
             } else {
                 newInputs.push(this.inputs[i]);
@@ -340,16 +356,50 @@ export class multiop_expr extends expression {
         // For all inputs that are constants, group them together and simplify.
         var newExpr = this;
         if (constIndex.length > 1) {
-            var newConstant = this.inputs[constIndex[0]].number;
-            for (i=1; i<constIndex.length; i++) {
-                switch (this.op) {
-                    case '+':
-                        newConstant = newConstant.add(this.inputs[constIndex[i]].number);
-                        break;
-                    case '*':
-                        newConstant = newConstant.multiply(this.inputs[constIndex[i]].number);
-                        break;
-                }
+            var newConstant;
+            switch (this.op) {
+                case '+':
+                    newConstant = new rational_number(0);
+                    for (let i in constIndex) {
+                        if (this.inputs[constIndex[i]].type == exprType.number) {
+                            newConstant = newConstant.add(this.inputs[constIndex[i]].number);
+                        } else if (this.inputs[constIndex[i]].type == exprType.unop) {
+                            switch (this.inputs[constIndex[i]].op) {
+                                case '+':
+                                case '*':
+                                    newConstant = newConstant.add(this.inputs[constIndex[i]].inputs[0].number);
+                                    break;
+                                case '-':
+                                    newConstant = newConstant.subtract(this.inputs[constIndex[i]].inputs[0].number);
+                                    break;
+                                case '/':
+                                    newConstant = newConstant.add(this.inputs[constIndex[i]].inputs[0].number.multInverse());
+                                    break;
+                            }
+                        }
+                    }
+                    break;
+                case '*':
+                    newConstant = new rational_number(1);
+                    for (let i in constIndex) {
+                        if (this.inputs[constIndex[i]].type == exprType.number) {
+                            newConstant = newConstant.multiply(this.inputs[constIndex[i]].number);
+                        } else if (this.inputs[constIndex[i]].type == exprType.unop) {
+                            switch (this.inputs[constIndex[i]].op) {
+                                case '+':
+                                case '*':
+                                    newConstant = newConstant.multiply(this.inputs[constIndex[i]].inputs[0].number);
+                                    break;
+                                case '-':
+                                    newConstant = newConstant.multiply(this.inputs[constIndex[i]].inputs[0].number.addInverse());
+                                    break;
+                                case '/':
+                                    newConstant = newConstant.divide(this.inputs[constIndex[i]].inputs[0].number);
+                                    break;
+                            }
+                        }
+                    }
+                    break;
             }
 
             // For addition, the constant goes to the end.
@@ -357,17 +407,17 @@ export class multiop_expr extends expression {
             var newInput;
             switch (this.op) {
                 case '+':
-                    newInputs.push(newInput = new scalar_expr(this.menv, newConstant));
+                    newInputs.push(newInput = create_scalar(this.menv, newConstant));
                     break;
                 case '*':
-                    newInputs.splice(0, 0, newInput = new scalar_expr(this.menv, newConstant));
+                    newInputs.splice(0, 0, newInput = create_scalar(this.menv, newConstant));
                     break;
             }
             if (newInputs.length == 1) {
                 newExpr = newInputs[0];
             } else {
                 newInput.parent = this;
-                newExpr = new multiop_expr(this.menv, this.op, newInputs);
+                newExpr = create_multiop(this.menv, this.op, newInputs);
             }
         }
         return(newExpr);
@@ -388,8 +438,8 @@ export class multiop_expr extends expression {
 
         var retValue = null,
             n = this.inputs.length;
-        if (expr.type == exprType.multiop && this.op == expr.op
-                && n <= expr.inputs.length) {
+        if ((expr.type == exprType.multiop || expr.type == exprType.binop)
+            && this.op == expr.op && n <= expr.inputs.length) {
 
             // Match on first n-1 and group remainder at end.
             var cmpExpr,
@@ -404,10 +454,10 @@ export class multiop_expr extends expression {
                     for (var j=0; j<=expr.inputs.length-n; j++) {
                         newInputs[j] = expr.inputs[n+j-1].copy();
                     }
-                    cmpInputs[i] = new multiop_expr(this.menv, expr.op, newInputs);
+                    cmpInputs[i] = create_multiop(this.menv, expr.op, newInputs);
                 }
             }
-            cmpExpr = new multiop_expr(this.menv, expr.op, cmpInputs);
+            cmpExpr = create_multiop(this.menv, expr.op, cmpInputs);
 
             // Now make the comparison.
             retValue = copyBindings(bindings);
@@ -425,12 +475,12 @@ export class multiop_expr extends expression {
                         for (var j=0; j<=diff; j++) {
                             newInputs[j] = expr.inputs[j].copy();
                         }
-                        cmpInputs[i] = new multiop_expr(this.menv, expr.op, newInputs);
+                        cmpInputs[i] = create_multiop(this.menv, expr.op, newInputs);
                     } else {
                         cmpInputs[i] = expr.inputs[diff+i].copy();
                     }
                 }
-                cmpExpr = new multiop_expr(this.menv, expr.op, cmpInputs);
+                cmpExpr = create_multiop(this.menv, expr.op, cmpInputs);
 
                 // Now make the comparison.
                 retValue = copyBindings(bindings);
@@ -439,6 +489,14 @@ export class multiop_expr extends expression {
         }
         return(retValue);
     }
+
+    copy() {
+        var newInputs = new Array();
+        for (var i in this.inputs) {
+            newInputs.push(this.inputs[i].copy());
+        }
+        return (create_multiop(this.menv, this.op, newInputs));
+      }
 
     compose(bindings) {
         var newInputs = [];
@@ -449,11 +507,11 @@ export class multiop_expr extends expression {
 
         var retValue;
         if (newInputs.length == 0) {
-            retValue = new scalar_expr(this.menv, this.op == '+' ? 0 : 1);
+            retValue = create_scalar(this.menv, this.op == '+' ? 0 : 1);
         } else if (newInputs.length == 1) {
             retValue = newInputs[0];
         } else {
-            retValue = new multiop_expr(this.menv, this.op, newInputs);
+            retValue = create_multiop(this.menv, this.op, newInputs);
         }
         return(retValue);
     }
@@ -472,24 +530,24 @@ export class multiop_expr extends expression {
                         break;
                     case '*':
                         var dProdTerms = [];
-                        for (j in this.inputs) {
+                        for (let j in this.inputs) {
                             if (i == j) {
                                 dProdTerms.push(dudx);
                             } else {
                                 dProdTerms.push(this.inputs[j].compose({}));
                             }
                         }
-                        dTerms.push(new multiop_expr(this.menv, '*', dProdTerms));
+                        dTerms.push(create_multiop(this.menv, '*', dProdTerms));
                         break;
                 }
             }
         }
         if (dTerms.length == 0) {
-            theDeriv = new scalar_expr(this.menv, 0);
+            theDeriv = create_scalar(this.menv, 0);
         } else if (dTerms.length == 1) {
             theDeriv = dTerms[0];
         } else {
-            theDeriv = new multiop_expr(this.menv, '+', dTerms);
+            theDeriv = create_multiop(this.menv, '+', dTerms);
         }
         return(theDeriv);
     }
