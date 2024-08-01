@@ -1,3 +1,8 @@
+v0.1.10
+- Fixed reduction scheme (broken binop and multiop)
+- Updated simplifyConstants
+- Added function creators for scalars and multiop to do testing before object instantiation.
+
 v0.1.6
 - Modified objects to no longer store the BTM environment, and instead updated evaluate, compare, and simplifyConstants methods to require it is passed each time.
 - Added environment-level composeExpression method that allows for unparsed substitutions.
