@@ -521,6 +521,14 @@ export class binop_expr extends expression {
                             && this.inputs[1].number.value() == 0) {
                         retVal = this.inputs[0];
                     }
+                    // Simplify u--a
+                    else if (this.inputs[1].type == exprType.number
+                            && this.inputs[1].number.value() < 0) {
+                        retVal = new binop_expr(this.menv, '+',
+                            this.inputs[0].copy(),
+                            create_scalar(this.menv, this.inputs[1].number.addInverse())
+                        );
+                    }
                     break;
                 case '*':
                     // Simplify 1*a
