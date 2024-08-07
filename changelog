@@ -1,3 +1,6 @@
+v0.1.12
+- Error correction on simplifyConstants for binop
+
 v0.1.11
 - Added on more simple case to simplifyConstants: u--a
 

@@ -487,7 +487,7 @@ export class binop_expr extends expression {
                             );
                         } else if (in0.inputs[1].type == exprType.number) {
                             retVal = new binop_expr(this.menv, '+',
-                                in0.inputs[0].copy,
+                                in0.inputs[0].copy(),
                                 create_scalar(this.menv, in0.inputs[1].number.add(this.inputs[1].number)),
                             );
                         }
@@ -554,7 +554,7 @@ export class binop_expr extends expression {
                         } else if (in0.inputs[1].type == exprType.number) {
                             retVal = new binop_expr(this.menv, '*',
                                 create_scalar(this.menv, in0.inputs[1].number.multiply(this.inputs[1].number)),
-                                in0.inputs[0].copy
+                                in0.inputs[0].copy()
                             );
                         }
                     }
