@@ -308,9 +308,12 @@ export class expression extends MathObject {
             matchInputs = false;
         }
         if (options == undefined) {
-            options = this.menv.options;
+            options = this.menv.options.varOptions;
         }
-        var knownBindings = Object.keys(options);
+        var knownBindings;
+        if (options.bindings) {
+            knownBindings = Object.keys(options.bindings);
+        }
         var unknownBindings = [];
 
         var rTol = 1e-8;

@@ -72,7 +72,8 @@ export class MENV {
             absTol: 1e-8,
             relTol: 1e-4,
             useRelErr: true,
-            doFlatten: false 
+            doFlatten: false,
+            varOptions: {'x': {min:-2, max:2}},
         };
         this.setReductionRules();
         this.multiop_expr = multiop_expr;
